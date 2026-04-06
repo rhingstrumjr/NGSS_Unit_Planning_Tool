@@ -11,20 +11,11 @@ interface AiSuggestButtonProps {
   appendMode?: boolean;
 }
 
-const API_KEY_STORAGE = 'ngss-gemini-key';
-
-function getStoredKey(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem(API_KEY_STORAGE) ?? '';
-}
-
 export function AiSuggestButton({ context, onAccept, appendMode = false }: AiSuggestButtonProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suggestion, setSuggestion] = useState('');
   const [error, setError] = useState('');
-  const [needsKey, setNeedsKey] = useState(false);
-  const [keyInput, setKeyInput] = useState('');
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside
@@ -40,12 +31,6 @@ export function AiSuggestButton({ context, onAccept, appendMode = false }: AiSug
   }, [open]);
 
   async function generate() {
-    const key = getStoredKey();
-    if (!key) {
-      setNeedsKey(true);
-      setOpen(true);
-      return;
-    }
     setOpen(true);
     setLoading(true);
     setSuggestion('');
@@ -67,15 +52,6 @@ export function AiSuggestButton({ context, onAccept, appendMode = false }: AiSug
     }
   }
 
-  function handleSaveKey() {
-    if (keyInput.trim()) {
-      localStorage.setItem(API_KEY_STORAGE, keyInput.trim());
-      setNeedsKey(false);
-      setKeyInput('');
-      generate();
-    }
-  }
-
   return (
     <div className="relative inline-block">
       <button
@@ -93,38 +69,7 @@ export function AiSuggestButton({ context, onAccept, appendMode = false }: AiSug
           ref={popoverRef}
           className="absolute z-50 right-0 top-full mt-1 w-80 bg-surface border border-border rounded-xl shadow-xl overflow-hidden"
         >
-          {needsKey ? (
-            <div className="p-4">
-              <p className="text-base font-semibold text-foreground mb-1">Enter Google AI API Key</p>
-              <p className="text-sm text-muted mb-3">
-                Your key is stored locally and never sent to our servers.
-              </p>
-              <input
-                type="password"
-                value={keyInput}
-                onChange={(e) => setKeyInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSaveKey()}
-                placeholder="AIza..."
-                autoFocus
-                className="w-full bg-surface-light border border-border rounded-lg px-4 py-2.5 text-base text-foreground placeholder:text-muted focus:outline-none focus:border-teal/50 mb-3"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSaveKey}
-                  disabled={!keyInput.trim()}
-                  className="flex-1 py-1.5 bg-teal hover:bg-teal-light text-white text-base font-medium rounded-lg transition-colors disabled:opacity-40"
-                >
-                  Save & Generate
-                </button>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="px-3 py-1.5 bg-surface-light hover:bg-border text-muted text-base rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : loading ? (
+          {loading ? (
             <div className="p-4 text-center">
               <div className="inline-block w-5 h-5 border-2 border-teal/30 border-t-teal rounded-full animate-spin mb-2" />
               <p className="text-sm text-muted">Generating suggestion...</p>
@@ -167,14 +112,3 @@ export function AiSuggestButton({ context, onAccept, appendMode = false }: AiSug
   );
 }
 
-/** Gets the stored API key. Returns empty string if none. */
-export function getApiKey(): string {
-  return getStoredKey();
-}
-
-/** Clears the stored API key. */
-export function clearApiKey(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(API_KEY_STORAGE);
-  }
-}

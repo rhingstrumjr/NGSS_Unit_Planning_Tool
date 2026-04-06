@@ -11,7 +11,7 @@ import type {
   ResearchedReading,
 } from '@/lib/research/types';
 
-const API_KEY_STORAGE = 'ngss-gemini-key';
+const GEMINI_API_KEY = 'AIzaSyBRQaIcMX-cOtjW2_IEvp-4bgGufADQBrQ';
 
 interface ResourceResearchDrawerProps {
   tier: 'loop' | 'target';
@@ -183,17 +183,7 @@ export function ResourceResearchDrawer({
   async function handleResearch() {
     if (drawerState === 'loading') return;
 
-    const apiKey =
-      typeof window !== 'undefined'
-        ? (localStorage.getItem(API_KEY_STORAGE) ?? '')
-        : '';
-
-    if (!apiKey) {
-      setErrorMsg('Add your Google AI API key in Settings to use this feature.');
-      setDrawerState('error');
-      return;
-    }
-
+    const apiKey = GEMINI_API_KEY;
     setDrawerState('loading');
     setErrorMsg('');
     setLoopResult(null);

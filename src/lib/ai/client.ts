@@ -1,11 +1,6 @@
 import type { AiSuggestionContext } from './suggestions';
 
-const API_KEY_STORAGE = 'ngss-gemini-key';
-
-function getStoredKey(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem(API_KEY_STORAGE) ?? '';
-}
+const GEMINI_API_KEY = 'AIzaSyBRQaIcMX-cOtjW2_IEvp-4bgGufADQBrQ';
 
 export interface AiSuggestionResult {
   text: string;
@@ -13,7 +8,7 @@ export interface AiSuggestionResult {
 }
 
 export async function fetchAiSuggestion(ctx: AiSuggestionContext): Promise<AiSuggestionResult> {
-  const apiKey = getStoredKey();
+  const apiKey = GEMINI_API_KEY;
   const res = await fetch('/api/ai/suggest', {
     method: 'POST',
     headers: {
