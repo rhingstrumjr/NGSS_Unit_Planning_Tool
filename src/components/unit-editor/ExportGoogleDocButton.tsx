@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import type { Unit } from '@/lib/types';
 
-const CLIENT_ID_KEY = 'ngss-google-client-id';
+const GOOGLE_CLIENT_ID = '956010149319-dudbpb2hinpo97tq30fgq5bt463de012.apps.googleusercontent.com';
 
 // GIS token client type (minimal)
 interface TokenClient {
@@ -63,13 +63,7 @@ export function ExportGoogleDocButton({ unit, onDocCreated }: Props) {
   const hasDocUrl = !!unit.googleDocUrl;
 
   async function handleExport() {
-    const clientId = localStorage.getItem(CLIENT_ID_KEY)?.trim();
-    if (!clientId) {
-      setErrorMsg('Add your Google OAuth Client ID in Settings to use this feature.');
-      setState('error');
-      return;
-    }
-
+    const clientId = GOOGLE_CLIENT_ID;
     setState('loading');
     setErrorMsg('');
 
