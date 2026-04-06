@@ -243,6 +243,7 @@ function parseActivities(block: string): Activity[] {
       durationMinutes: parseInt(m[3] ?? '0') || 0,
       description: m[4]?.trim() ?? '',
       keyQuestions: '',
+      resources: [],
     });
   }
   return activities;
