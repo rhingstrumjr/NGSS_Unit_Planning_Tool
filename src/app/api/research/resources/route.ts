@@ -92,11 +92,11 @@ function stripJsonFences(text: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = req.headers.get('x-gemini-key');
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'No API key provided. Add your Google AI API key in Settings.' },
-      { status: 401 }
+      { error: 'Gemini API key not configured on server.' },
+      { status: 500 }
     );
   }
 

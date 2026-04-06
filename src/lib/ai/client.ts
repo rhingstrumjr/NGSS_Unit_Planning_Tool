@@ -1,19 +1,15 @@
 import type { AiSuggestionContext } from './suggestions';
 
-const GEMINI_API_KEY = 'AIzaSyBRQaIcMX-cOtjW2_IEvp-4bgGufADQBrQ';
-
 export interface AiSuggestionResult {
   text: string;
   error?: string;
 }
 
 export async function fetchAiSuggestion(ctx: AiSuggestionContext): Promise<AiSuggestionResult> {
-  const apiKey = GEMINI_API_KEY;
   const res = await fetch('/api/ai/suggest', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-gemini-key': apiKey,
     },
     body: JSON.stringify(ctx),
   });

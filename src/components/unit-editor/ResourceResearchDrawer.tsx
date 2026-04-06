@@ -11,7 +11,6 @@ import type {
   ResearchedReading,
 } from '@/lib/research/types';
 
-const GEMINI_API_KEY = 'AIzaSyBRQaIcMX-cOtjW2_IEvp-4bgGufADQBrQ';
 
 interface ResourceResearchDrawerProps {
   tier: 'loop' | 'target';
@@ -183,7 +182,6 @@ export function ResourceResearchDrawer({
   async function handleResearch() {
     if (drawerState === 'loading') return;
 
-    const apiKey = GEMINI_API_KEY;
     setDrawerState('loading');
     setErrorMsg('');
     setLoopResult(null);
@@ -195,7 +193,6 @@ export function ResourceResearchDrawer({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-gemini-key': apiKey,
         },
         body: JSON.stringify(context),
       });
