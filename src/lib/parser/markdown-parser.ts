@@ -328,6 +328,7 @@ function parseLoop(title: string, body: string, loopIndex: number): Loop {
     problematizingRoutine,
     slidesUrl,
     targets,
+    resources: [],
   };
 }
 
