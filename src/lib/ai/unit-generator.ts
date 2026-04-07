@@ -154,8 +154,8 @@ ${RESPONSE_SCHEMA_DESCRIPTION}`;
 /** Cost per 1M tokens for display in UI (paid tier rates, approx) */
 export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   'gemini-3.1-flash-lite-preview': { input: 0.25, output: 1.50 },
-  'gemini-3-flash-preview':        { input: 0.50, output: 3.00 },
-  'gemini-2.5-pro-preview':        { input: 1.25, output: 10.00 },
+  'gemini-3-flash-preview': { input: 0.50, output: 3.00 },
+  'gemini-2.5-pro': { input: 1.25, output: 10.00 },
 };
 
 /** Estimate cost for a typical generation call (3K input + 1.5K output tokens) */
@@ -167,8 +167,8 @@ export function estimateCallCost(model: string): number {
 
 export const SUPPORTED_MODELS = [
   { id: 'gemini-3.1-flash-lite-preview', label: 'Flash Lite (fastest)' },
-  { id: 'gemini-3-flash-preview',        label: 'Flash (recommended)' },
-  { id: 'gemini-2.5-pro-preview',        label: 'Pro (highest quality)' },
+  { id: 'gemini-3-flash-preview', label: 'Flash (recommended)' },
+  { id: 'gemini-2.5-pro', label: 'Pro (highest quality)' },
 ] as const;
 
 export const DEFAULT_MODEL = 'gemini-3-flash-preview';
