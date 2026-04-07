@@ -6,10 +6,12 @@ import { WizardShell } from '@/components/wizard/WizardShell';
 import { EntryPointStep } from '@/components/wizard/EntryPointStep';
 import { StandardsStep } from '@/components/wizard/StandardsStep';
 import { PhenomenaStep } from '@/components/wizard/PhenomenaStep';
+import { AiDraftStep } from '@/components/wizard/AiDraftStep';
 import { DrivingQuestionsStep } from '@/components/wizard/DrivingQuestionsStep';
 import { LoopSkeletonStep } from '@/components/wizard/LoopSkeletonStep';
 import { TargetSketchStep } from '@/components/wizard/TargetSketchStep';
 import { ReviewStep } from '@/components/wizard/ReviewStep';
+import type { GenerateUnitResponse } from '@/lib/ai/unit-generator';
 import { v4 as uuid } from 'uuid';
 import { createBlankUnit, createBlankLoop, createBlankTarget, createBlankDrivingQuestion, createModelStage, createBlankPhenomenon } from '@/lib/defaults';
 import { saveUnit } from '@/lib/storage';
@@ -45,6 +47,7 @@ const STEP_LABELS = [
   'Start',
   'Standards',
   'Phenomenon',
+  'AI Draft',
   'Driving Questions',
   'Unit Arc',
   'Targets',
@@ -97,13 +100,29 @@ export default function NewUnitPage() {
     switch (step) {
       case 0: return state.entryPoint !== null;
       case 1: return true; // standards are optional
-      case 2: return state.phenomena.some((p) => p.isPrimary && p.name.trim().length > 0);
-      case 3: return state.unitDrivingQuestion.trim().length > 0;
-      case 4: return state.loops.length > 0;
-      case 5: return true;
+      case 2: return state.phenomena.some((p) => p.isPrimary && p.name.trim().length > 0) || state.standardCodes.length > 0;
+      case 3: return true; // AI Draft is optional — always skippable
+      case 4: return state.unitDrivingQuestion.trim().length > 0;
+      case 5: return state.loops.length > 0;
       case 6: return true;
+      case 7: return true;
       default: return true;
     }
+  }
+
+  function handleAiDraftAccept(draft: GenerateUnitResponse) {
+    setState((s) => ({
+      ...s,
+      phenomena: draft.phenomenon
+        ? [{ name: draft.phenomenon.name, description: draft.phenomenon.description, mediaUrl: '', isPrimary: true }]
+        : s.phenomena,
+      standardCodes: draft.suggestedStandardCodes.length > 0 ? draft.suggestedStandardCodes : s.standardCodes,
+      unitDrivingQuestion: draft.unitDrivingQuestion,
+      subQuestions: draft.subQuestions,
+      loops: draft.loops,
+      targets: draft.targets,
+    }));
+    setStep((s) => s + 1);
   }
 
   function handleComplete() {
@@ -198,6 +217,14 @@ export default function NewUnitPage() {
       key="phenomena"
       phenomena={state.phenomena}
       onChange={(p) => update('phenomena', p)}
+    />,
+    <AiDraftStep
+      key="ai-draft"
+      entryPoint={state.entryPoint}
+      gradeBand={state.gradeBand}
+      standardCodes={state.standardCodes}
+      phenomenon={state.phenomena.find((p) => p.isPrimary) ?? state.phenomena[0] ?? { name: '', description: '', mediaUrl: '', isPrimary: true }}
+      onAccept={handleAiDraftAccept}
     />,
     <DrivingQuestionsStep
       key="dqs"
