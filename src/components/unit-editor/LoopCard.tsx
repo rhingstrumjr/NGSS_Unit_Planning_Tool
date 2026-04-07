@@ -15,6 +15,9 @@ interface LoopCardProps {
   unit: Unit;
   onChange: (loop: Loop) => void;
   onRemove: () => void;
+  onMoveTargetTo?: (targetId: string, destLoopId: string) => void;
+  onMoveTargetUpDown?: (targetId: string, direction: 'up' | 'down') => void;
+  otherLoops?: { id: string; title: string; sortOrder: number }[];
   /** When true, renders fully expanded without the CollapsibleCard wrapper */
   expanded?: boolean;
 }
@@ -25,6 +28,9 @@ export function LoopCard({
   unit,
   onChange,
   onRemove,
+  onMoveTargetTo,
+  onMoveTargetUpDown,
+  otherLoops,
   expanded,
 }: LoopCardProps) {
   function updateTarget(targetId: string, updated: Target) {
@@ -226,6 +232,10 @@ export function LoopCard({
               targetIndex={j}
               onChange={(updated) => updateTarget(target.id, updated)}
               onRemove={() => removeTarget(target.id)}
+              onMoveUp={j > 0 && onMoveTargetUpDown ? () => onMoveTargetUpDown(target.id, 'up') : undefined}
+              onMoveDown={j < loop.targets.length - 1 && onMoveTargetUpDown ? () => onMoveTargetUpDown(target.id, 'down') : undefined}
+              onMoveTo={onMoveTargetTo ? (destLoopId) => onMoveTargetTo(target.id, destLoopId) : undefined}
+              otherLoops={otherLoops}
               phenomenonName={unit.phenomena.find((p) => p.isPrimary)?.name}
               loopTitle={loop.title}
               gradeBand={unit.gradeBand}

@@ -15,6 +15,10 @@ interface TargetCardProps {
   targetIndex: number;
   onChange: (target: Target) => void;
   onRemove: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onMoveTo?: (destLoopId: string) => void;
+  otherLoops?: { id: string; title: string; sortOrder: number }[];
   /** Passed from the parent loop/unit for AI context */
   phenomenonName?: string;
   loopTitle?: string;
@@ -27,6 +31,10 @@ export function TargetCard({
   targetIndex,
   onChange,
   onRemove,
+  onMoveUp,
+  onMoveDown,
+  onMoveTo,
+  otherLoops,
   phenomenonName,
   loopTitle,
   gradeBand,
@@ -40,16 +48,55 @@ export function TargetCard({
       data-section-id={`target-${target.id}`}
     >
       {/* Target header */}
-      <button
-        type="button"
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-light/20 transition-colors"
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-light/20 transition-colors cursor-pointer"
         onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen((o) => !o); }}
       >
         <span className="text-amber font-mono text-base font-semibold flex-shrink-0">
           {label}
         </span>
         <span className="text-base flex-1 truncate">
           {target.title || 'Untitled Target'}
+        </span>
+        {/* Reorder controls */}
+        <span className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          {onMoveUp && (
+            <button
+              type="button"
+              onClick={onMoveUp}
+              title="Move up"
+              className="text-muted hover:text-foreground px-1 py-0.5 rounded hover:bg-surface-light/30 text-sm leading-none"
+            >
+              ↑
+            </button>
+          )}
+          {onMoveDown && (
+            <button
+              type="button"
+              onClick={onMoveDown}
+              title="Move down"
+              className="text-muted hover:text-foreground px-1 py-0.5 rounded hover:bg-surface-light/30 text-sm leading-none"
+            >
+              ↓
+            </button>
+          )}
+          {onMoveTo && otherLoops && otherLoops.length > 0 && (
+            <select
+              value=""
+              onChange={(e) => { if (e.target.value) onMoveTo(e.target.value); }}
+              className="text-sm text-muted bg-surface border border-border rounded px-2 py-0.5 cursor-pointer hover:border-teal focus:outline-none focus:border-teal"
+            >
+              <option value="">Move to…</option>
+              {otherLoops.map((l) => (
+                <option key={l.id} value={l.id}>
+                  Loop {l.sortOrder + 1}{l.title ? ': ' + l.title : ''}
+                </option>
+              ))}
+            </select>
+          )}
         </span>
         <svg
           className={`w-3 h-3 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
@@ -59,7 +106,7 @@ export function TargetCard({
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
-      </button>
+      </div>
 
       {open && (
         <div className="px-4 pb-4 space-y-4">

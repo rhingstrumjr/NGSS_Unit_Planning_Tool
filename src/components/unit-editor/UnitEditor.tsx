@@ -52,6 +52,54 @@ export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
     setActiveLoopIndex((prev) => Math.max(0, prev - 1));
   }
 
+  function moveTargetToLoop(targetId: string, srcLoopId: string, destLoopId: string) {
+    updateUnit((prev) => {
+      const srcLoop = prev.loops.find((l) => l.id === srcLoopId);
+      const destLoop = prev.loops.find((l) => l.id === destLoopId);
+      if (!srcLoop || !destLoop) return prev;
+      const target = srcLoop.targets.find((t) => t.id === targetId);
+      if (!target) return prev;
+      return {
+        ...prev,
+        loops: prev.loops.map((l) => {
+          if (l.id === srcLoopId) {
+            return {
+              ...l,
+              targets: l.targets
+                .filter((t) => t.id !== targetId)
+                .map((t, i) => ({ ...t, sortOrder: i })),
+            };
+          }
+          if (l.id === destLoopId) {
+            return {
+              ...l,
+              targets: [
+                ...l.targets,
+                { ...target, sortOrder: l.targets.length },
+              ],
+            };
+          }
+          return l;
+        }),
+      };
+    });
+  }
+
+  function moveTargetWithinLoop(loopId: string, targetId: string, direction: 'up' | 'down') {
+    updateUnit((prev) => ({
+      ...prev,
+      loops: prev.loops.map((l) => {
+        if (l.id !== loopId) return l;
+        const idx = l.targets.findIndex((t) => t.id === targetId);
+        const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= l.targets.length) return l;
+        const newTargets = [...l.targets];
+        [newTargets[idx], newTargets[swapIdx]] = [newTargets[swapIdx], newTargets[idx]];
+        return { ...l, targets: newTargets.map((t, i) => ({ ...t, sortOrder: i })) };
+      }),
+    }));
+  }
+
   function addStandard() {
     updateUnit((prev) => ({
       ...prev,
@@ -298,6 +346,9 @@ export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
                   unit={unit}
                   onChange={(updated) => updateLoop(currentLoop.id, updated)}
                   onRemove={() => removeLoop(currentLoop.id)}
+                  onMoveTargetTo={(targetId, destLoopId) => moveTargetToLoop(targetId, currentLoop.id, destLoopId)}
+                  onMoveTargetUpDown={(targetId, dir) => moveTargetWithinLoop(currentLoop.id, targetId, dir)}
+                  otherLoops={unit.loops.filter((l) => l.id !== currentLoop.id)}
                   expanded
                 />
               ) : (
