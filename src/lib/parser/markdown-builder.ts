@@ -51,10 +51,10 @@ function buildTarget(target: Target, loopNum: number, targetNum: number): string
   const hasSummary = st.activity || st.observations || st.reasoning || st.connectionToPhenomenon;
   if (hasSummary) {
     out += '- **Summary Table:**\n';
-    if (st.activity) out += `  - Activity: ${st.activity}\n`;
-    if (st.observations) out += `  - Observations: ${st.observations}\n`;
-    if (st.reasoning) out += `  - Reasoning: ${st.reasoning}\n`;
-    if (st.connectionToPhenomenon) out += `  - Connection: ${st.connectionToPhenomenon}\n`;
+    if (st.activity) out += `  - Activity / Big Idea: ${st.activity}\n`;
+    if (st.observations) out += `  - What we learned: ${st.observations}\n`;
+    if (st.reasoning) out += `  - How it helps my understanding: ${st.reasoning}\n`;
+    if (st.connectionToPhenomenon) out += `  - What do I need to modify in my model: ${st.connectionToPhenomenon}\n`;
   }
 
   if (target.activities.length) {
@@ -105,6 +105,54 @@ function buildLoop(loop: Loop, loopNum: number): string {
 
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function escapePipeChars(text: string): string {
+  return text.replace(/\|/g, '\\|');
+}
+
+function buildPlanningTable(unit: Unit): string {
+  if (unit.loops.length === 0) return '';
+
+  let out = section('## AST Planning Table');
+  out += '\n';
+
+  const header = '| Activity / Big Idea | What we learned | How it helps my understanding of my topic | What do I need to modify in my model |';
+  const divider = '|---|---|---|---|';
+
+  for (let i = 0; i < unit.loops.length; i++) {
+    const loop = unit.loops[i];
+    out += `### Loop ${i + 1}: ${loop.title || 'Untitled'}\n`;
+
+    const dq = loop.dqRef
+      ? unit.drivingQuestions.find((q) => q.id === loop.dqRef)
+      : null;
+    if (dq?.text) out += `**Driving Question:** ${dq.text}\n`;
+    out += '\n';
+
+    if (loop.targets.length === 0) {
+      out += '_No learning targets in this loop._\n\n';
+      continue;
+    }
+
+    out += header + '\n';
+    out += divider + '\n';
+
+    for (const target of loop.targets) {
+      const st = target.summaryTable;
+      const cells = [
+        escapePipeChars(st.activity || ''),
+        escapePipeChars(st.observations || ''),
+        escapePipeChars(st.reasoning || ''),
+        escapePipeChars(st.connectionToPhenomenon || ''),
+      ];
+      out += `| ${cells.join(' | ')} |\n`;
+    }
+
+    out += '\n';
+  }
+
+  return out;
 }
 
 export function buildMarkdownV2(unit: Unit): string {
@@ -177,6 +225,9 @@ export function buildMarkdownV2(unit: Unit): string {
   for (let i = 0; i < unit.loops.length; i++) {
     out += buildLoop(unit.loops[i], i + 1);
   }
+
+  // AST Planning Table
+  out += buildPlanningTable(unit);
 
   // Putting It Together (Transfer Task)
   const tt = unit.transferTask;

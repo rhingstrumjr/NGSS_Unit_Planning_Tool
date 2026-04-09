@@ -25,10 +25,10 @@ export function SummaryTableCard({ summaryTable, onChange, aiContext }: SummaryT
   }
 
   const cells: { field: keyof SummaryTableRow; label: string; placeholder: string; fieldType: 'summary-table-activity' | 'summary-table-observations' | 'summary-table-reasoning' | 'summary-table-connection' }[] = [
-    { field: 'activity', label: 'Activity — What did we do?', placeholder: 'Describe the investigation or activity...', fieldType: 'summary-table-activity' },
-    { field: 'observations', label: 'Observations — What happened?', placeholder: 'Patterns or observations students noticed...', fieldType: 'summary-table-observations' },
-    { field: 'reasoning', label: 'Reasoning — Why did it happen?', placeholder: 'What students think caused the patterns...', fieldType: 'summary-table-reasoning' },
-    { field: 'connectionToPhenomenon', label: 'Connection to Phenomenon', placeholder: 'How does this help explain the phenomenon?', fieldType: 'summary-table-connection' },
+    { field: 'activity', label: 'Activity / Big Idea', placeholder: 'Describe the big idea or investigation...', fieldType: 'summary-table-activity' },
+    { field: 'observations', label: 'What we learned', placeholder: 'What students learned from this activity...', fieldType: 'summary-table-observations' },
+    { field: 'reasoning', label: 'How it helps my understanding of my topic', placeholder: 'How this connects to the bigger picture...', fieldType: 'summary-table-reasoning' },
+    { field: 'connectionToPhenomenon', label: 'What do I need to modify in my model', placeholder: 'What to add or change in the class model...', fieldType: 'summary-table-connection' },
   ];
 
   return (

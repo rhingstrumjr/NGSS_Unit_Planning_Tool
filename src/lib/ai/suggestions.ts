@@ -78,13 +78,13 @@ function buildUserMessage(ctx: AiSuggestionContext): string {
 
     'model-contribution': `${context}\n\nWhat should students add or revise in the class model after completing this learning target? Describe the specific change (1-2 sentences).`,
 
-    'summary-table-activity': `${context}\n\nDescribe the key activity from the teacher's perspective — what students did in 1-2 sentences.`,
+    'summary-table-activity': `${context}\n\nDescribe the key activity or big idea from this learning target — what students did or the main concept addressed (1-2 sentences).`,
 
-    'summary-table-observations': `${context}\n\nDescribe the patterns or key observations students should notice during this activity (1-2 sentences).`,
+    'summary-table-observations': `${context}\n\nWhat key things should students say they learned from this activity? Write in student-friendly language (1-2 sentences).`,
 
-    'summary-table-reasoning': `${context}\n\nDescribe what students should reason from their observations — what do they think caused the patterns? (1-2 sentences)`,
+    'summary-table-reasoning': `${context}\n\nHow does what students learned help them understand the topic or anchoring phenomenon? Write a direct connection (1-2 sentences).`,
 
-    'summary-table-connection': `${context}\n\nHow does this activity help explain the anchoring phenomenon? Write a direct connection statement (1-2 sentences).`,
+    'summary-table-connection': `${context}\n\nWhat specific additions or changes should students make to their model after this activity? Be concrete about what gets added or revised (1-2 sentences).`,
 
     'formative': `${context}\n\nWrite a specific Exit Ticket prompt for this learning target. The prompt should ask students to apply their new understanding to the anchoring phenomenon (1 focused question or prompt).`,
 

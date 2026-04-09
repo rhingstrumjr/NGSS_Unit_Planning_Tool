@@ -13,6 +13,7 @@ import { DrivingQuestionsCard } from './DrivingQuestionsCard';
 import { ModelProgressionCard } from './ModelProgressionCard';
 import { LoopCard } from './LoopCard';
 import { TransferTaskCard } from './TransferTaskCard';
+import { PlanningTableView } from './PlanningTableView';
 import { AddButton } from '@/components/ui/AddButton';
 
 interface UnitEditorProps {
@@ -20,7 +21,7 @@ interface UnitEditorProps {
   updateUnit: (updater: (prev: Unit) => Unit) => void;
 }
 
-type MainTab = 'overview' | 'loops' | 'wrapup';
+type MainTab = 'overview' | 'loops' | 'wrapup' | 'planning';
 
 export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
   const [activeTab, setActiveTab] = useState<MainTab>('overview');
@@ -123,6 +124,7 @@ export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
     { id: 'overview' as const, label: 'Overview' },
     { id: 'loops' as const, label: 'Sensemaking Loops', badge: String(unit.loops.length) },
     { id: 'wrapup' as const, label: 'Wrap-Up' },
+    { id: 'planning' as const, label: 'Planning Table' },
   ];
 
   const loopTabs = unit.loops.map((loop, i) => ({
@@ -366,6 +368,11 @@ export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
               <ModelProgressionCard unit={unit} updateUnit={updateUnit} />
               <TransferTaskCard unit={unit} updateUnit={updateUnit} />
             </>
+          )}
+
+          {/* ─── PLANNING TABLE TAB ─── */}
+          {activeTab === 'planning' && (
+            <PlanningTableView unit={unit} updateUnit={updateUnit} />
           )}
         </div>
       </div>

@@ -214,10 +214,10 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
       if (st.activity || st.observations || st.reasoning || st.connectionToPhenomenon) {
         blank();
         paragraph('Summary Table (AST):');
-        if (st.activity) labeled('  Activity', st.activity);
-        if (st.observations) labeled('  Observations', st.observations);
-        if (st.reasoning) labeled('  Reasoning', st.reasoning);
-        if (st.connectionToPhenomenon) labeled('  Connection to Phenomenon', st.connectionToPhenomenon);
+        if (st.activity) labeled('  Activity / Big Idea', st.activity);
+        if (st.observations) labeled('  What we learned', st.observations);
+        if (st.reasoning) labeled('  How it helps my understanding', st.reasoning);
+        if (st.connectionToPhenomenon) labeled('  What do I need to modify in my model', st.connectionToPhenomenon);
       }
 
       // Activities
@@ -269,6 +269,32 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
       blank();
     }
 
+  }
+
+  // AST Planning Table
+  if (unit.loops.some((l) => l.targets.length > 0)) {
+    heading('Planning Table (AST Framework)', 2);
+    for (let li = 0; li < unit.loops.length; li++) {
+      const loop = unit.loops[li];
+      if (loop.targets.length === 0) continue;
+      heading(`Loop ${li + 1}: ${loop.title || 'Untitled Loop'}`, 3);
+      const dq = loop.dqRef
+        ? unit.drivingQuestions.find((q) => q.id === loop.dqRef)
+        : null;
+      if (dq?.text) labeled('Driving Question', dq.text);
+      blank();
+      for (let ti = 0; ti < loop.targets.length; ti++) {
+        const target = loop.targets[ti];
+        const targetLabel = `${li + 1}.${ti + 1}${target.title ? '  ' + target.title : ''}`;
+        paragraph(targetLabel);
+        const st = target.summaryTable;
+        if (st.activity) labeled('  Activity / Big Idea', st.activity);
+        if (st.observations) labeled('  What we learned', st.observations);
+        if (st.reasoning) labeled('  How it helps my understanding', st.reasoning);
+        if (st.connectionToPhenomenon) labeled('  What do I need to modify in my model', st.connectionToPhenomenon);
+        blank();
+      }
+    }
   }
 
   // Transfer Task
