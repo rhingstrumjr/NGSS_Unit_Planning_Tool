@@ -115,11 +115,16 @@ export function StandardsStep({ gradeBand, selectedCodes, onGradeBandChange, onT
                       <div>
                         <span className="text-teal-light font-mono text-xs font-semibold mr-2">{s.code}</span>
                         <span className="text-sm text-foreground">{s.title}</span>
-                        <div className="flex gap-3 mt-1 text-xs text-muted">
+                        <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted">
                           <span>DCI: {s.dci}</span>
                           <span>SEP: {s.sep}</span>
                           <span>CCC: {s.ccc}</span>
                         </div>
+                        {s.clarification && (
+                          <p className="mt-1.5 text-xs text-muted/80 italic leading-snug">
+                            {s.clarification}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </button>
