@@ -51,7 +51,10 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
-    const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    // Thinking models (e.g. gemini-2.5-pro) return multiple parts: the thinking
+    // chain first, then the actual response. Use the last part with text content.
+    const parts: Array<{ text?: string }> = data?.candidates?.[0]?.content?.parts ?? [];
+    const rawText: string = [...parts].reverse().find((p) => p.text)?.text ?? '';
 
     if (!rawText) {
       return NextResponse.json({ error: 'AI returned an empty response. Try again.' }, { status: 500 });

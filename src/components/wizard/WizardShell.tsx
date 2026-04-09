@@ -26,7 +26,7 @@ export function WizardShell({
   const progress = ((step + 1) / totalSteps) * 100;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-[calc(100vh-53px)] flex flex-col">
       {/* Progress bar */}
       <div className="bg-surface border-b border-border px-6 py-4">
         <div className="max-w-3xl mx-auto">
