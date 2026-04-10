@@ -15,6 +15,7 @@ import { LoopCard } from './LoopCard';
 import { TransferTaskCard } from './TransferTaskCard';
 import { PlanningTableView } from './PlanningTableView';
 import { AddButton } from '@/components/ui/AddButton';
+import { AiSuggestButton } from '@/components/ui/AiSuggestButton';
 
 interface UnitEditorProps {
   unit: Unit;
@@ -294,9 +295,22 @@ export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
 
               {/* Gapless Explanation */}
               <div className="mb-4 bg-surface rounded-xl border border-border p-5">
-                <label className="block text-sm text-muted mb-1">
-                  Gapless Explanation (teacher-only)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm text-muted">
+                    Gapless Explanation (teacher-only)
+                  </label>
+                  <AiSuggestButton
+                    context={{
+                      fieldType: 'gapless-explanation',
+                      phenomenonName: unit.phenomena.find((p) => p.isPrimary)?.name ?? unit.phenomena[0]?.name,
+                      phenomenonDescription: unit.phenomena.find((p) => p.isPrimary)?.description ?? unit.phenomena[0]?.description,
+                      unitDrivingQuestion: unit.unitDrivingQuestion,
+                    }}
+                    onAccept={(text) =>
+                      updateUnit((prev) => ({ ...prev, gaplessExplanation: text }))
+                    }
+                  />
+                </div>
                 <textarea
                   value={unit.gaplessExplanation}
                   onChange={(e) =>

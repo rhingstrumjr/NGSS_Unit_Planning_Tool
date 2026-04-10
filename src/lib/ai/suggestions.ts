@@ -36,6 +36,8 @@ export interface AiSuggestionContext {
   prevLoopTitle?: string;
   nextLoopTitle?: string;
   currentValue?: string;
+  /** Activities already entered for this target (title + description + key questions) */
+  activitiesText?: string;
 }
 
 const SYSTEM_PROMPT = `You are an expert NGSS science curriculum designer with deep knowledge of Ambitious Science Teaching (AST) practices. You help teachers design coherent NGSS storyline units.
@@ -57,7 +59,8 @@ function buildUserMessage(ctx: AiSuggestionContext): string {
   const threeD = [ctx.dciAlignment, ctx.sepAlignment, ctx.cccAlignment].filter(Boolean).join(' | ');
   const prevLoop = ctx.prevLoopTitle ? `Previous loop: "${ctx.prevLoopTitle}"` : '';
   const nextLoop = ctx.nextLoopTitle ? `Next loop: "${ctx.nextLoopTitle}"` : '';
-  const context = [ph, phDesc, udq, loop, threeD && `3D alignment: ${threeD}`, prevLoop, nextLoop, target]
+  const activities = ctx.activitiesText ? `Activities in this target:\n${ctx.activitiesText}` : '';
+  const context = [ph, phDesc, udq, loop, threeD && `3D alignment: ${threeD}`, prevLoop, nextLoop, target, activities]
     .filter(Boolean)
     .join('\n');
 
@@ -80,9 +83,9 @@ function buildUserMessage(ctx: AiSuggestionContext): string {
 
     'summary-table-activity': `${context}\n\nDescribe the key activity or big idea from this learning target — what students did or the main concept addressed (1-2 sentences).`,
 
-    'summary-table-observations': `${context}\n\nWhat key things should students say they learned from this activity? Write in student-friendly language (1-2 sentences).`,
+    'summary-table-observations': `${context}\n\nBased on the activities listed above, what are the key things students learned? Summarize in student-friendly language (1-2 sentences). Draw directly from the activity descriptions and key questions if provided.`,
 
-    'summary-table-reasoning': `${context}\n\nHow does what students learned help them understand the topic or anchoring phenomenon? Write a direct connection (1-2 sentences).`,
+    'summary-table-reasoning': `${context}\n\nBased on what students did and learned in these activities, how does it help them understand the driving question or anchoring phenomenon? Write a direct connection (1-2 sentences).`,
 
     'summary-table-connection': `${context}\n\nWhat specific additions or changes should students make to their model after this activity? Be concrete about what gets added or revised (1-2 sentences).`,
 

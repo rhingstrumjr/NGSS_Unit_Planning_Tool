@@ -1,27 +1,124 @@
 'use client';
 
+import { useState } from 'react';
 import type { Unit, SummaryTableRow } from '@/lib/types';
+import { fetchAiSuggestion } from '@/lib/ai/client';
+import type { AiFieldType } from '@/lib/ai/suggestions';
 
 interface PlanningTableViewProps {
   unit: Unit;
   updateUnit: (updater: (prev: Unit) => Unit) => void;
 }
 
-const COLUMNS: { field: keyof SummaryTableRow; label: string }[] = [
-  { field: 'activity', label: 'Activity / Big Idea' },
-  { field: 'observations', label: 'What we learned' },
-  { field: 'reasoning', label: 'How it helps my understanding of my topic' },
-  { field: 'connectionToPhenomenon', label: 'What do I need to modify in my model' },
+const COLUMNS: { field: keyof SummaryTableRow; label: string; fieldType: AiFieldType }[] = [
+  { field: 'activity',               label: 'Activity / Big Idea',                          fieldType: 'summary-table-activity' },
+  { field: 'observations',           label: 'What we learned',                               fieldType: 'summary-table-observations' },
+  { field: 'reasoning',              label: 'How it helps my understanding of my topic',     fieldType: 'summary-table-reasoning' },
+  { field: 'connectionToPhenomenon', label: 'What do I need to modify in my model',         fieldType: 'summary-table-connection' },
 ];
 
 export function PlanningTableView({ unit, updateUnit }: PlanningTableViewProps) {
-  if (unit.loops.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted">
-        <p className="text-lg">No sensemaking loops yet.</p>
-        <p className="text-sm mt-1">Add loops and learning targets to populate the planning table.</p>
-      </div>
-    );
+  const [filling, setFilling] = useState(false);
+  const [progress, setProgress] = useState('');
+
+  const primaryPhenomenon = unit.phenomena.find((p) => p.isPrimary) ?? unit.phenomena[0];
+
+  /** Build a readable summary of a target's activities for AI context */
+  function buildActivitiesText(target: Unit['loops'][number]['targets'][number]): string {
+    return target.activities
+      .map((a) =>
+        [
+          a.title,
+          a.description && `  Description: ${a.description}`,
+          a.keyQuestions && `  Key questions: ${a.keyQuestions}`,
+        ]
+          .filter(Boolean)
+          .join('\n')
+      )
+      .join('\n\n');
+  }
+
+  // Count cells that would be touched (empty only)
+  const emptyCellCount = unit.loops.reduce((total, loop) =>
+    total + loop.targets.reduce((t2, target) =>
+      t2 + COLUMNS.filter((col) => !target.summaryTable[col.field]?.trim()).length, 0), 0);
+
+  async function autoFillEmpty() {
+    if (filling) return;
+    setFilling(true);
+
+    let filled = 0;
+    for (const loop of unit.loops) {
+      for (const target of loop.targets) {
+        // Collect all updates for this target so we apply them in one updateUnit call
+        const updates: Partial<SummaryTableRow> = {};
+
+        for (const col of COLUMNS) {
+          if (target.summaryTable[col.field]?.trim()) continue; // skip non-empty
+
+          filled++;
+          setProgress(`Filling ${filled} of ${emptyCellCount}…`);
+
+          // --- Column 1: derive directly from activity titles ---
+          if (col.field === 'activity') {
+            const titles = target.activities.map((a) => a.title).filter(Boolean);
+            updates.activity = titles.length > 0 ? titles.join('\n') : target.title;
+            continue;
+          }
+
+          // --- Column 4: copy from modelContribution ---
+          if (col.field === 'connectionToPhenomenon') {
+            if (target.modelContribution?.trim()) {
+              updates.connectionToPhenomenon = target.modelContribution;
+            }
+            // If modelContribution is also empty, skip — no data to derive from
+            continue;
+          }
+
+          // --- Columns 2 & 3: AI with full activity context ---
+          const result = await fetchAiSuggestion({
+            fieldType: col.fieldType,
+            phenomenonName: primaryPhenomenon?.name,
+            phenomenonDescription: primaryPhenomenon?.description,
+            unitDrivingQuestion: unit.unitDrivingQuestion,
+            loopTitle: loop.title,
+            loopIndex: unit.loops.indexOf(loop),
+            targetTitle: target.title,
+            dciAlignment: target.dciAlignment,
+            sepAlignment: target.sepAlignment,
+            cccAlignment: target.cccAlignment,
+            activitiesText: buildActivitiesText(target),
+          });
+
+          if (result.text && !result.error) {
+            (updates as Record<string, string>)[col.field] = result.text;
+          }
+        }
+
+        // Apply all updates for this target at once
+        if (Object.keys(updates).length > 0) {
+          const loopId = loop.id;
+          const targetId = target.id;
+          updateUnit((prev) => ({
+            ...prev,
+            loops: prev.loops.map((l) =>
+              l.id !== loopId ? l : {
+                ...l,
+                targets: l.targets.map((t) =>
+                  t.id !== targetId ? t : {
+                    ...t,
+                    summaryTable: { ...t.summaryTable, ...updates },
+                  }
+                ),
+              }
+            ),
+          }));
+        }
+      }
+    }
+
+    setFilling(false);
+    setProgress('');
   }
 
   function updateSummaryField(loopId: string, targetId: string, field: keyof SummaryTableRow, value: string) {
@@ -42,13 +139,46 @@ export function PlanningTableView({ unit, updateUnit }: PlanningTableViewProps) 
     }));
   }
 
+  if (unit.loops.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted">
+        <p className="text-lg">No sensemaking loops yet.</p>
+        <p className="text-sm mt-1">Add loops and learning targets to populate the planning table.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-bold mb-1">AST Planning Table</h2>
-        <p className="text-sm text-muted">
-          One row per learning target. Edit cells directly — changes sync back to each target&apos;s summary table.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold mb-1">AST Planning Table</h2>
+          <p className="text-sm text-muted">
+            One row per learning target. Edit cells directly — changes sync back to each target&apos;s summary table.
+          </p>
+        </div>
+
+        {emptyCellCount > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
+            {filling && progress && (
+              <span className="text-sm text-muted">{progress}</span>
+            )}
+            <button
+              onClick={autoFillEmpty}
+              disabled={filling}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border border-teal/30 text-teal-light hover:bg-teal/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {filling ? (
+                <>
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-teal/30 border-t-teal rounded-full animate-spin" />
+                  Filling…
+                </>
+              ) : (
+                <>✨ Fill from unit data ({emptyCellCount} empty {emptyCellCount === 1 ? 'cell' : 'cells'})</>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {unit.loops.map((loop, loopIndex) => {
