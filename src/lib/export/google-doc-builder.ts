@@ -3,6 +3,55 @@ import type { Unit } from '@/lib/types';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Request = Record<string, any>;
 
+/** Sentinel text inserted where the planning table should go. The API route
+ *  finds this paragraph, deletes it, and replaces it with a real Docs table. */
+export const PLANNING_TABLE_PLACEHOLDER = '%%PLANNING_TABLE%%';
+
+export const PLANNING_TABLE_COLUMNS = [
+  '#',
+  'Activity / Big Idea',
+  'What we learned',
+  'How it helps my understanding of my topic',
+  'What do I need to modify in my model',
+] as const;
+
+export interface PlanningTableData {
+  /** All rows including the header row and loop-header rows. */
+  rows: string[][];
+  /** Zero-based indices of rows that should be bold (header + loop headers). */
+  headerRowIndices: number[];
+}
+
+/** Builds the planning table row data from the unit. */
+export function buildPlanningTableData(unit: Unit): PlanningTableData {
+  const rows: string[][] = [Array.from(PLANNING_TABLE_COLUMNS)];
+  const headerRowIndices: number[] = [0];
+
+  for (let li = 0; li < unit.loops.length; li++) {
+    const loop = unit.loops[li];
+    if (loop.targets.length === 0) continue;
+
+    const dq = loop.dqRef != null ? unit.drivingQuestions[loop.dqRef] ?? null : null;
+    const loopLabel = `Loop ${li + 1}: ${loop.title || 'Untitled Loop'}${dq?.text ? `\nDriving Question: ${dq.text}` : ''}`;
+    headerRowIndices.push(rows.length);
+    rows.push([loopLabel, '', '', '', '']);
+
+    for (let ti = 0; ti < loop.targets.length; ti++) {
+      const target = loop.targets[ti];
+      const st = target.summaryTable;
+      rows.push([
+        `${li + 1}.${ti + 1}  ${target.title || 'Untitled Target'}`,
+        st.activity || '',
+        st.observations || '',
+        st.reasoning || '',
+        st.connectionToPhenomenon || '',
+      ]);
+    }
+  }
+
+  return { rows, headerRowIndices };
+}
+
 /**
  * Converts a Unit into a Google Docs API batchUpdate requests array.
  * Insert all text first (tracking index offsets), then apply paragraph
@@ -269,31 +318,10 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
 
   }
 
-  // AST Planning Table
+  // AST Planning Table — placeholder replaced with a real table by the API route
   if (unit.loops.some((l) => l.targets.length > 0)) {
     heading('Planning Table (AST Framework)', 2);
-    for (let li = 0; li < unit.loops.length; li++) {
-      const loop = unit.loops[li];
-      if (loop.targets.length === 0) continue;
-      heading(`Loop ${li + 1}: ${loop.title || 'Untitled Loop'}`, 3);
-      const dq =
-        loop.dqRef != null
-          ? unit.drivingQuestions[loop.dqRef] ?? null
-          : null;
-      if (dq?.text) labeled('Driving Question', dq.text);
-      blank();
-      for (let ti = 0; ti < loop.targets.length; ti++) {
-        const target = loop.targets[ti];
-        const targetLabel = `${li + 1}.${ti + 1}${target.title ? '  ' + target.title : ''}`;
-        paragraph(targetLabel);
-        const st = target.summaryTable;
-        if (st.activity) labeled('  Activity / Big Idea', st.activity);
-        if (st.observations) labeled('  What we learned', st.observations);
-        if (st.reasoning) labeled('  How it helps my understanding', st.reasoning);
-        if (st.connectionToPhenomenon) labeled('  What do I need to modify in my model', st.connectionToPhenomenon);
-        blank();
-      }
-    }
+    insertText(PLANNING_TABLE_PLACEHOLDER + '\n');
   }
 
   // Transfer Task
