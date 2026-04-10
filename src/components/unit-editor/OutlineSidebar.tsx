@@ -2,7 +2,7 @@
 
 import type { Unit } from '@/lib/types';
 
-type MainTab = 'overview' | 'loops' | 'wrapup';
+type MainTab = 'overview' | 'loops' | 'wrapup' | 'planning';
 
 interface OutlineSidebarProps {
   unit: Unit;

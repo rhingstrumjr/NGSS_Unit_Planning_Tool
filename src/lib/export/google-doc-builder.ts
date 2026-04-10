@@ -278,9 +278,10 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
       const loop = unit.loops[li];
       if (loop.targets.length === 0) continue;
       heading(`Loop ${li + 1}: ${loop.title || 'Untitled Loop'}`, 3);
-      const dq = loop.dqRef
-        ? unit.drivingQuestions.find((q) => q.id === loop.dqRef)
-        : null;
+      const dq =
+        loop.dqRef != null
+          ? unit.drivingQuestions[loop.dqRef] ?? null
+          : null;
       if (dq?.text) labeled('Driving Question', dq.text);
       blank();
       for (let ti = 0; ti < loop.targets.length; ti++) {

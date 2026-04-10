@@ -29,7 +29,7 @@ export function StandardsStep({ gradeBand, selectedCodes, onGradeBandChange, onT
       s.title.toLowerCase().includes(q) ||
       s.dci.toLowerCase().includes(q);
     return matchBand && matchQuery;
-  });
+  }).sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
 
   const grouped = filtered.reduce<Record<string, typeof NGSS_STANDARDS>>((acc, s) => {
     const key = s.domain;
@@ -88,7 +88,9 @@ export function StandardsStep({ gradeBand, selectedCodes, onGradeBandChange, onT
 
       {/* Standard list grouped by domain */}
       <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-        {Object.entries(grouped).map(([domain, standards]) => (
+        {Object.entries(grouped)
+          .sort(([a], [b]) => Object.keys(DOMAIN_LABELS).indexOf(a) - Object.keys(DOMAIN_LABELS).indexOf(b))
+          .map(([domain, standards]) => (
           <div key={domain}>
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
               {DOMAIN_LABELS[domain] ?? domain}

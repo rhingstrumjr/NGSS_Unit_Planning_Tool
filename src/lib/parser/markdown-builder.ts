@@ -124,9 +124,10 @@ function buildPlanningTable(unit: Unit): string {
     const loop = unit.loops[i];
     out += `### Loop ${i + 1}: ${loop.title || 'Untitled'}\n`;
 
-    const dq = loop.dqRef
-      ? unit.drivingQuestions.find((q) => q.id === loop.dqRef)
-      : null;
+    const dq =
+      loop.dqRef != null
+        ? unit.drivingQuestions[loop.dqRef] ?? null
+        : null;
     if (dq?.text) out += `**Driving Question:** ${dq.text}\n`;
     out += '\n';
 
