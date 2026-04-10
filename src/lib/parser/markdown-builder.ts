@@ -45,8 +45,6 @@ function buildTarget(target: Target, loopNum: number, targetNum: number): string
   if (target.dciAlignment) out += field('DCI', target.dciAlignment);
   if (target.sepAlignment) out += field('SEP', target.sepAlignment);
   if (target.cccAlignment) out += field('CCC', target.cccAlignment);
-  if (target.modelContribution) out += field('Model Contribution', target.modelContribution);
-
   const st = target.summaryTable;
   const hasSummary = st.activity || st.observations || st.reasoning || st.connectionToPhenomenon;
   if (hasSummary) {

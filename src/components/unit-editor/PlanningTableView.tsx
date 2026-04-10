@@ -66,16 +66,7 @@ export function PlanningTableView({ unit, updateUnit }: PlanningTableViewProps) 
             continue;
           }
 
-          // --- Column 4: copy from modelContribution ---
-          if (col.field === 'connectionToPhenomenon') {
-            if (target.modelContribution?.trim()) {
-              updates.connectionToPhenomenon = target.modelContribution;
-            }
-            // If modelContribution is also empty, skip — no data to derive from
-            continue;
-          }
-
-          // --- Columns 2 & 3: AI with full activity context ---
+          // --- Columns 2, 3 & 4: AI with full activity context ---
           const result = await fetchAiSuggestion({
             fieldType: col.fieldType,
             phenomenonName: primaryPhenomenon?.name,

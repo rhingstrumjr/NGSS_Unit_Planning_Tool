@@ -75,7 +75,7 @@ export interface Target {
   dciAlignment: string;
   sepAlignment: string;
   cccAlignment: string;
-  modelContribution: string;
+  modelContribution?: string;
   summaryTable: SummaryTableRow;
   activities: Activity[];
   formative: FormativeAssessment | null;

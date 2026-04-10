@@ -164,35 +164,6 @@ export function TargetCard({
             </div>
           </div>
 
-          {/* Model Contribution */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-muted">Model Contribution</label>
-              <AiSuggestButton
-                context={{
-                  fieldType: 'model-contribution',
-                  phenomenonName,
-                  loopTitle,
-                  loopIndex,
-                  targetTitle: target.title,
-                  dciAlignment: target.dciAlignment,
-                  sepAlignment: target.sepAlignment,
-                  cccAlignment: target.cccAlignment,
-                }}
-                onAccept={(text) => onChange({ ...target, modelContribution: text })}
-              />
-            </div>
-            <textarea
-              value={target.modelContribution}
-              onChange={(e) =>
-                onChange({ ...target, modelContribution: e.target.value })
-              }
-              placeholder="What do students add or revise in their model?"
-              className="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-base focus:outline-none focus:border-teal resize-none"
-              rows={2}
-            />
-          </div>
-
           {/* Summary Table */}
           <SummaryTableCard
             summaryTable={target.summaryTable}

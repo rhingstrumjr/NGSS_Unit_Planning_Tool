@@ -78,7 +78,6 @@ export function createBlankTarget(sortOrder: number): Target {
     dciAlignment: '',
     sepAlignment: '',
     cccAlignment: '',
-    modelContribution: '',
     summaryTable: createBlankSummaryTable(),
     activities: [],
     formative: null,

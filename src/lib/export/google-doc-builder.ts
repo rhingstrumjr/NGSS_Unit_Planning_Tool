@@ -207,8 +207,6 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
         .join('  ·  ');
       if (alignment) paragraph(alignment);
 
-      if (target.modelContribution) labeled('Model Contribution', target.modelContribution);
-
       // Summary Table (AST)
       const st = target.summaryTable;
       if (st.activity || st.observations || st.reasoning || st.connectionToPhenomenon) {
