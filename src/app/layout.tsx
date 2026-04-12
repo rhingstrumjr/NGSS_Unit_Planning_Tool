@@ -32,9 +32,14 @@ export default function RootLayout({
           <a href="/" className="flex items-center gap-2">
             <span className="text-teal font-bold text-xl">NGSS Planner</span>
           </a>
-          <a href="/settings" className="text-sm text-muted hover:text-foreground transition-colors">
-            Settings
-          </a>
+          <nav className="flex items-center gap-4">
+            <a href="/workshop" className="text-sm text-muted hover:text-foreground transition-colors">
+              Workshop
+            </a>
+            <a href="/settings" className="text-sm text-muted hover:text-foreground transition-colors">
+              Settings
+            </a>
+          </nav>
         </header>
         <main className="flex-1">{children}</main>
       </body>
