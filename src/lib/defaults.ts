@@ -58,7 +58,7 @@ export function createBlankLoop(sortOrder: number): Loop {
     id: uuid(),
     sortOrder,
     title: '',
-    dqRef: 0,
+    dqId: null,
     durationDays: 3,
     phenomenonConnection: '',
     investigativePhenomenon: '',

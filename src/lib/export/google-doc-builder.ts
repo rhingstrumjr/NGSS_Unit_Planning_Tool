@@ -31,7 +31,7 @@ export function buildPlanningTableData(unit: Unit): PlanningTableData {
     const loop = unit.loops[li];
     if (loop.targets.length === 0) continue;
 
-    const dq = loop.dqRef != null ? unit.drivingQuestions[loop.dqRef] ?? null : null;
+    const dq = loop.dqId ? unit.drivingQuestions.find((q) => q.id === loop.dqId) ?? null : null;
     const loopLabel = `Loop ${li + 1}: ${loop.title || 'Untitled Loop'}${dq?.text ? `\nDriving Question: ${dq.text}` : ''}`;
     headerRowIndices.push(rows.length);
     rows.push([loopLabel, '', '', '', '']);

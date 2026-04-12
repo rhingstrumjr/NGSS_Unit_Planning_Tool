@@ -173,10 +173,9 @@ export function PlanningTableView({ unit, updateUnit }: PlanningTableViewProps) 
       </div>
 
       {unit.loops.map((loop, loopIndex) => {
-        const dq =
-          loop.dqRef != null
-            ? unit.drivingQuestions[loop.dqRef] ?? null
-            : null;
+        const dq = loop.dqId
+          ? unit.drivingQuestions.find((q) => q.id === loop.dqId) ?? null
+          : null;
 
         return (
           <div key={loop.id} className="bg-surface rounded-xl border border-border overflow-hidden">

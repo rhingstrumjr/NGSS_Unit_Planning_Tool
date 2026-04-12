@@ -57,7 +57,10 @@ export interface Loop {
   id: string;
   sortOrder: number;
   title: string;
-  dqRef: number;
+  /** UUID of the linked DrivingQuestion. Use this going forward. */
+  dqId: string | null;
+  /** @deprecated 1-based index kept only for migrating old localStorage data. */
+  dqRef?: number;
   durationDays: number;
   phenomenonConnection: string;
   investigativePhenomenon: string;

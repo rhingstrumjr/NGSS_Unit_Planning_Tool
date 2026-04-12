@@ -1,6 +1,24 @@
-import type { Unit } from './types';
+import type { Unit, Loop } from './types';
 
 const STORAGE_KEY = 'ngss-units';
+
+/**
+ * One-time migration: converts legacy `loop.dqRef` (1-based index) to `loop.dqId` (UUID).
+ * Safe to run repeatedly — skips loops that already have dqId.
+ */
+function migrateUnit(unit: Unit): Unit {
+  const loops: Loop[] = unit.loops.map((loop) => {
+    // Already migrated
+    if (loop.dqId !== undefined) return loop;
+    // Legacy: resolve 1-based dqRef → UUID via the existing array lookup
+    const legacyRef = (loop as Loop & { dqRef?: number }).dqRef;
+    const dqId = (legacyRef != null && legacyRef > 0)
+      ? unit.drivingQuestions[legacyRef]?.id ?? null  // preserves existing off-by-one lookup
+      : null;
+    return { ...loop, dqId };
+  });
+  return { ...unit, loops };
+}
 
 function readStore(): Record<string, Unit> {
   if (typeof window === 'undefined') return {};
@@ -18,14 +36,15 @@ function writeStore(store: Record<string, Unit>) {
 
 export function getUnits(): Unit[] {
   const store = readStore();
-  return Object.values(store).sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
+  return Object.values(store)
+    .map(migrateUnit)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
 export function getUnit(id: string): Unit | null {
   const store = readStore();
-  return store[id] ?? null;
+  const unit = store[id];
+  return unit ? migrateUnit(unit) : null;
 }
 
 export function saveUnit(unit: Unit): void {

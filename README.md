@@ -11,8 +11,12 @@ A curriculum design tool for K–12 science teachers building phenomenon-driven 
 - **8-step unit wizard** — guided flow from anchoring phenomenon through standards, driving questions, sensemaking loops, and learning targets
 - **Structured unit builder** — full editor for phenomena, driving questions, model progression, loops, targets, activities, formative assessments, and transfer tasks
 - **AI-powered suggestions** — one-click Gemini suggestions on 17 narrative fields (loop routines, target descriptions, summary table entries, formative prompts, and more)
+- **AI Worksheet Enhancer** — transform existing worksheets with research-backed strategies (CER scaffolding, cognitive level upgrades, metacognitive prompts, and more); accessible from each activity or from the nav
 - **AST summary table** — activity → observations → reasoning → connection to phenomenon for every learning target
-- **Resource research** — AI-powered teaching resource finder for loops and targets
+- **Drag-and-drop reordering** — drag loops in the sidebar, drag targets within a loop, drag activities within a target
+- **Unit completeness indicator** — progress ring in the builder header with hover tooltip listing all incomplete fields
+- **Model progression timeline** — visual horizontal stepper from Initial Model through each loop to Complete Model
+- **Resource research** — AI-powered teaching resource finder for loops and targets; resources labeled by tier (Teacher Reference / Student-Facing)
 - **Google Docs export** — one-click export to a formatted Google Doc (requires a Google account sign-in in the browser)
 - **Markdown import/export** — share or version-control units as `.md` files
 - **JSON backup/restore** — export and import all units at once
@@ -184,12 +188,14 @@ Set the `GEMINI_API_KEY` environment variable in the Vercel project settings. No
 
 ## Roadmap
 
-See [`PROGRESS.md`](PROGRESS.md) for detailed build status. Planned future work includes:
+See [`ROADMAP.md`](ROADMAP.md) for the full feature backlog with research rationale and suggested sequencing. See [`PROGRESS.md`](PROGRESS.md) for detailed build status. Planned future work includes:
 
-- Drag-and-drop loop/target reordering
+- Phenomenon quality evaluator (AI scores against NGSS Storyline criteria)
+- 3D Coverage Matrix (live EQuIP-style DCI/SEP/CCC grid across all targets)
+- Driving Question Board visualizer (Kanban-style: Unanswered → Investigating → Figured Out)
+- EQuIP self-assessment rubric
 - Supabase persistence and user accounts
 - Real-time collaboration (Yjs / Liveblocks)
-- Team management and unit sharing
 
 ---
 

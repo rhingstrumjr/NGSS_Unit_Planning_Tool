@@ -23,6 +23,8 @@ interface TargetCardProps {
   phenomenonName?: string;
   loopTitle?: string;
   gradeBand?: string;
+  unitId?: string;
+  loopId?: string;
 }
 
 export function TargetCard({
@@ -38,6 +40,8 @@ export function TargetCard({
   phenomenonName,
   loopTitle,
   gradeBand,
+  unitId,
+  loopId,
 }: TargetCardProps) {
   const [open, setOpen] = useState(false);
   const label = `${loopIndex + 1}.${targetIndex + 1}`;
@@ -192,6 +196,8 @@ export function TargetCard({
               sepAlignment: target.sepAlignment,
               cccAlignment: target.cccAlignment,
             }}
+            unitId={unitId}
+            loopId={loopId}
           />
 
           {/* Formative */}
@@ -228,6 +234,8 @@ export function TargetCard({
           <ResourceList
             resources={target.resources}
             onChange={(resources) => onChange({ ...target, resources })}
+            label="Target Resources"
+            helpText="Reference materials tied to this specific learning target"
           />
 
           {/* Remove */}

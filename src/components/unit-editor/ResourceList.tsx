@@ -7,9 +7,11 @@ import { AddButton } from '@/components/ui/AddButton';
 interface ResourceListProps {
   resources: Resource[];
   onChange: (resources: Resource[]) => void;
+  label?: string;
+  helpText?: string;
 }
 
-export function ResourceList({ resources, onChange }: ResourceListProps) {
+export function ResourceList({ resources, onChange, label = 'Resources', helpText }: ResourceListProps) {
   function update(id: string, changes: Partial<Resource>) {
     onChange(resources.map((r) => (r.id === id ? { ...r, ...changes } : r)));
   }
@@ -28,7 +30,8 @@ export function ResourceList({ resources, onChange }: ResourceListProps) {
 
   return (
     <div>
-      <label className="block text-sm text-muted mb-1">Resources</label>
+      <label className="block text-sm text-muted mb-0.5">{label}</label>
+      {helpText && <p className="text-xs text-muted/60 mb-1">{helpText}</p>}
       <div className="space-y-2">
         {resources.map((res) => (
           <div

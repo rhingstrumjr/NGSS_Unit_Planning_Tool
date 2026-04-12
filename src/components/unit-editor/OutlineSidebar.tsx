@@ -1,6 +1,21 @@
 'use client';
 
 import type { Unit } from '@/lib/types';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type MainTab = 'overview' | 'loops' | 'wrapup' | 'planning';
 
@@ -9,6 +24,7 @@ interface OutlineSidebarProps {
   activeTab: MainTab;
   activeLoopIndex: number;
   onNavigate: (tab: MainTab, loopIndex?: number) => void;
+  updateUnit?: (updater: (prev: Unit) => Unit) => void;
 }
 
 export function OutlineSidebar({
@@ -16,8 +32,38 @@ export function OutlineSidebar({
   activeTab,
   activeLoopIndex,
   onNavigate,
+  updateUnit,
 }: OutlineSidebarProps) {
   const primary = unit.phenomena?.find((p) => p.isPrimary);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+
+  function handleLoopDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !updateUnit) return;
+
+    const oldIndex = unit.loops.findIndex((l) => l.id === active.id);
+    const newIndex = unit.loops.findIndex((l) => l.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(unit.loops, oldIndex, newIndex).map((l, i) => ({
+      ...l,
+      sortOrder: i,
+    }));
+
+    updateUnit((prev) => ({ ...prev, loops: reordered }));
+
+    // If the active loop moved, follow it to its new position
+    if (activeLoopIndex === oldIndex) {
+      onNavigate('loops', newIndex);
+    } else if (activeLoopIndex > oldIndex && activeLoopIndex <= newIndex) {
+      onNavigate('loops', activeLoopIndex - 1);
+    } else if (activeLoopIndex < oldIndex && activeLoopIndex >= newIndex) {
+      onNavigate('loops', activeLoopIndex + 1);
+    }
+  }
 
   return (
     <nav className="w-60 flex-shrink-0 border-r border-border bg-surface overflow-y-auto p-4">
@@ -55,32 +101,29 @@ export function OutlineSidebar({
             Sensemaking Loops
           </span>
         </li>
-        {unit.loops?.map((loop, i) => (
-          <li key={loop.id}>
-            <button
-              onClick={() => onNavigate('loops', i)}
-              className={`w-full text-left px-3 py-2 rounded transition-colors font-medium ${
-                activeTab === 'loops' && activeLoopIndex === i
-                  ? 'bg-teal/10 text-teal'
-                  : 'text-foreground hover:bg-surface-light'
-              }`}
-            >
-              Loop {i + 1}: {loop.title || 'Untitled'}
-            </button>
-            {activeTab === 'loops' && activeLoopIndex === i && (
-              <ul className="ml-4 space-y-0.5">
-                {loop.targets?.map((target, j) => (
-                  <SidebarItem
-                    key={target.id}
-                    label={`${i + 1}.${j + 1}: ${target.title || 'Untitled'}`}
-                    onClick={() => onNavigate('loops', i)}
-                    small
-                  />
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleLoopDragEnd}
+        >
+          <SortableContext
+            items={unit.loops.map((l) => l.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {unit.loops?.map((loop, i) => (
+              <SortableLoopItem
+                key={loop.id}
+                loop={loop}
+                index={i}
+                activeTab={activeTab}
+                activeLoopIndex={activeLoopIndex}
+                onNavigate={onNavigate}
+                targets={loop.targets}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
 
         {/* Wrap-up section */}
         <li className="pt-2">
@@ -100,6 +143,71 @@ export function OutlineSidebar({
         />
       </ul>
     </nav>
+  );
+}
+
+function SortableLoopItem({
+  loop,
+  index,
+  activeTab,
+  activeLoopIndex,
+  onNavigate,
+  targets,
+}: {
+  loop: Unit['loops'][number];
+  index: number;
+  activeTab: MainTab;
+  activeLoopIndex: number;
+  onNavigate: (tab: MainTab, loopIndex?: number) => void;
+  targets: Unit['loops'][number]['targets'];
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: loop.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const isActive = activeTab === 'loops' && activeLoopIndex === index;
+
+  return (
+    <li ref={setNodeRef} style={style}>
+      <div className={`flex items-center gap-1 rounded ${isActive ? 'bg-teal/10' : ''}`}>
+        {/* Drag handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 px-1.5 py-2 text-muted/40 hover:text-muted cursor-grab active:cursor-grabbing touch-none"
+          title="Drag to reorder"
+          onClick={(e) => e.stopPropagation()}
+        >
+          ⠿
+        </button>
+        {/* Loop label */}
+        <button
+          onClick={() => onNavigate('loops', index)}
+          className={`flex-1 text-left py-2 pr-3 rounded transition-colors font-medium truncate text-base ${
+            isActive ? 'text-teal' : 'text-foreground hover:text-teal/80'
+          }`}
+        >
+          Loop {index + 1}: {loop.title || 'Untitled'}
+        </button>
+      </div>
+      {isActive && targets?.length > 0 && (
+        <ul className="ml-7 space-y-0.5">
+          {targets.map((target, j) => (
+            <SidebarItem
+              key={target.id}
+              label={`${index + 1}.${j + 1}: ${target.title || 'Untitled'}`}
+              onClick={() => onNavigate('loops', index)}
+              small
+            />
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 

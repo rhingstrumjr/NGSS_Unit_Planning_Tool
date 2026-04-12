@@ -1,6 +1,6 @@
 # NGSS Planner — Build Progress
 
-Last updated: 2026-04-05 (evening)
+Last updated: 2026-04-12
 
 ---
 
@@ -78,11 +78,34 @@ Last updated: 2026-04-05 (evening)
 
 ### Medium priority (polish)
 
-**4. Drag-and-drop reordering**
-- Loops: drag to reorder in the builder
-- Targets: drag to reorder within a loop
-- Could use `@dnd-kit/core` or plain HTML5 drag events
-- The `sortOrder` field is already on Loop and Target for this
+**~~4. Drag-and-drop reordering~~** ✅ Done
+- Loops: drag handles (⠿) in the OutlineSidebar — `@dnd-kit/sortable`
+- Targets: drag handles on each TargetCard within a loop
+- Activities: drag handles on each activity row within a target
+- `sortOrder` re-indexed on drop; active loop tab follows the dragged item
+
+**~~4b. Unit completeness indicator~~** ✅ Done
+- Circular SVG progress ring in the builder header (amber → teal → green)
+- Hover tooltip lists all incomplete fields by name
+- Scoring logic in `src/lib/completeness.ts`
+
+**~~4c. Model progression horizontal timeline~~** ✅ Done
+- Stages rendered as a horizontal stepper: Initial → After Loop N → Complete
+- Distinct node colors per stage type; falls back to vertical on small screens
+
+**~~4d. Resource tier relabeling~~** ✅ Done
+- Loop: "Teacher Reference Materials" | Target: "Target Resources" | Activity: "Files & Links" (unchanged)
+- Help text added to loop and target tiers for clarity
+
+**~~4e. DQ-to-Loop linkage hardened~~** ✅ Done
+- Replaced fragile `loop.dqRef: number` (1-based index) with `loop.dqId: string` (UUID)
+- Auto-migration in `storage.ts` upgrades existing localStorage data on load
+- All consumers updated (LoopCard, PlanningTableView, markdown builder/parser, Google Doc builder)
+
+**~~4f. AI Workshop discoverability~~** ✅ Done
+- Nav link renamed "Workshop" → "AI Workshop"
+- Page heading updated to "AI Worksheet Enhancer" with descriptive subtitle
+- Each activity card has a "✨ Enhance a worksheet" link that opens Workshop with unit/loop pre-selected via URL params
 
 **5. Wizard AI suggestions**
 - Standards step: "Suggest phenomena for these standards" button
@@ -94,6 +117,7 @@ Last updated: 2026-04-05 (evening)
 **6. Unit arc visualization**
 - Visual horizontal timeline in the builder showing loops → transfer task
 - Could replace or supplement the outline sidebar for quick overview
+- See ROADMAP.md item E (Storyline Coherence View)
 
 ### Phase 2 (future)
 
@@ -123,7 +147,9 @@ Last updated: 2026-04-05 (evening)
 | `/units/[id]` | ✅ Done |
 | `/units/[id]/export` | N/A (button redirects directly to doc) |
 | `/settings` | ✅ Done |
+| `/workshop` | ✅ Done (AI Worksheet Enhancer) |
 | `/api/ai/suggest` | ✅ Done (Gemini 3.1 Flash-Lite) |
+| `/api/ai/enhance-worksheet` | ✅ Done |
 | `/api/export/google-doc` | ✅ Done |
 
 ## AI Model

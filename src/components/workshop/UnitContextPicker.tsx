@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Unit, Loop, Target } from '@/lib/types';
 import type { UnitContext } from '@/lib/ai/worksheet-enhancer';
 import { getUnits } from '@/lib/storage';
@@ -10,7 +11,34 @@ interface UnitContextPickerProps {
   onChange: (ctx: UnitContext | undefined) => void;
 }
 
+function buildContextStatic(
+  unit: Unit | undefined,
+  loop: Loop | undefined,
+  target: Target | undefined
+): UnitContext | undefined {
+  if (!unit) return undefined;
+  const primary = unit.phenomena.find((p) => p.isPrimary) ?? unit.phenomena[0];
+  return {
+    phenomenonName: primary?.name ?? '',
+    phenomenonDescription: primary?.description ?? '',
+    unitDrivingQuestion: unit.unitDrivingQuestion,
+    gradeBand: unit.gradeBand,
+    standards: unit.standards.map((s) => ({
+      code: s.code,
+      description: s.description,
+      type: s.type,
+    })),
+    loopTitle: loop?.title,
+    phenomenonConnection: loop?.phenomenonConnection,
+    targetTitle: target?.title,
+    dciAlignment: target?.dciAlignment,
+    sepAlignment: target?.sepAlignment,
+    cccAlignment: target?.cccAlignment,
+  };
+}
+
 export function UnitContextPicker({ value, onChange }: UnitContextPickerProps) {
+  const searchParams = useSearchParams();
   const [units, setUnits] = useState<Unit[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string>('');
   const [selectedLoopIdx, setSelectedLoopIdx] = useState<string>('');
@@ -18,7 +46,28 @@ export function UnitContextPicker({ value, onChange }: UnitContextPickerProps) {
   const [expanded, setExpanded] = useState(!!value);
 
   useEffect(() => {
-    setUnits(getUnits());
+    const loaded = getUnits();
+    setUnits(loaded);
+
+    // Pre-select from query params when navigating here from the unit builder
+    const qUnitId = searchParams.get('unitId');
+    const qLoopId = searchParams.get('loopId');
+    if (qUnitId) {
+      const unit = loaded.find((u) => u.id === qUnitId);
+      if (unit) {
+        setSelectedUnitId(qUnitId);
+        setExpanded(true);
+        let loopIdx = '';
+        if (qLoopId) {
+          const idx = unit.loops.findIndex((l) => l.id === qLoopId);
+          if (idx >= 0) loopIdx = String(idx);
+          setSelectedLoopIdx(loopIdx);
+        }
+        const loop = loopIdx !== '' ? unit.loops[Number(loopIdx)] : undefined;
+        onChange(buildContextStatic(unit, loop, undefined));
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedUnit = units.find((u) => u.id === selectedUnitId);
@@ -31,51 +80,25 @@ export function UnitContextPicker({ value, onChange }: UnitContextPickerProps) {
       ? selectedLoop.targets[Number(selectedTargetIdx)]
       : undefined;
 
-  function buildContext(
-    unit: Unit | undefined,
-    loop: Loop | undefined,
-    target: Target | undefined
-  ): UnitContext | undefined {
-    if (!unit) return undefined;
-    const primary = unit.phenomena.find((p) => p.isPrimary) ?? unit.phenomena[0];
-    return {
-      phenomenonName: primary?.name ?? '',
-      phenomenonDescription: primary?.description ?? '',
-      unitDrivingQuestion: unit.unitDrivingQuestion,
-      gradeBand: unit.gradeBand,
-      standards: unit.standards.map((s) => ({
-        code: s.code,
-        description: s.description,
-        type: s.type,
-      })),
-      loopTitle: loop?.title,
-      phenomenonConnection: loop?.phenomenonConnection,
-      targetTitle: target?.title,
-      dciAlignment: target?.dciAlignment,
-      sepAlignment: target?.sepAlignment,
-      cccAlignment: target?.cccAlignment,
-    };
-  }
-
   function handleUnitChange(unitId: string) {
     setSelectedUnitId(unitId);
     setSelectedLoopIdx('');
     setSelectedTargetIdx('');
     const unit = units.find((u) => u.id === unitId);
-    onChange(buildContext(unit, undefined, undefined));
+    onChange(buildContextStatic(unit, undefined, undefined));
   }
 
   function handleLoopChange(loopIdx: string) {
     setSelectedLoopIdx(loopIdx);
     setSelectedTargetIdx('');
     const loop = loopIdx !== '' ? selectedUnit?.loops[Number(loopIdx)] : undefined;
-    onChange(buildContext(selectedUnit, loop, undefined));
+    onChange(buildContextStatic(selectedUnit, loop, undefined));
   }
 
   function handleTargetChange(targetIdx: string) {
     setSelectedTargetIdx(targetIdx);
     const target = targetIdx !== '' && selectedLoop ? selectedLoop.targets[Number(targetIdx)] : undefined;
-    onChange(buildContext(selectedUnit, selectedLoop, target));
+    onChange(buildContextStatic(selectedUnit, selectedLoop, target));
   }
 
   function handleClear() {

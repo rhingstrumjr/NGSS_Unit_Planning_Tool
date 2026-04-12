@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import type { UnitContext } from '@/lib/ai/worksheet-enhancer';
 import { UnitContextPicker } from './UnitContextPicker';
 
@@ -50,7 +51,9 @@ Photosynthesis Worksheet
         </span>
       </div>
 
-      <UnitContextPicker value={unitContext} onChange={onUnitContextChange} />
+      <Suspense fallback={null}>
+        <UnitContextPicker value={unitContext} onChange={onUnitContextChange} />
+      </Suspense>
     </div>
   );
 }

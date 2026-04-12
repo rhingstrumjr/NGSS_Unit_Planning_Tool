@@ -1,4 +1,4 @@
-import type { Unit, Loop, Target, Activity, Resource } from '@/lib/types';
+import type { Unit, Loop, Target, Activity, Resource, DrivingQuestion } from '@/lib/types';
 
 function line(text: string): string {
   return text + '\n';
@@ -72,11 +72,12 @@ function buildTarget(target: Target, loopNum: number, targetNum: number): string
   return out;
 }
 
-function buildLoop(loop: Loop, loopNum: number): string {
+function buildLoop(loop: Loop, loopNum: number, dqs: DrivingQuestion[]): string {
   let out = '';
   out += section(`## §${loopNum + 3}. Sensemaking Loop ${loopNum}: ${loop.title || 'Untitled'}`);
   out += '\n';
-  if (loop.dqRef) out += field('Driving Question', `#${loop.dqRef}`);
+  const dqIdx = loop.dqId ? dqs.findIndex((q) => q.id === loop.dqId) : -1;
+  if (dqIdx >= 0) out += field('Driving Question', `#${dqIdx + 1}`);
   if (loop.durationDays) out += field('Estimated Duration', loop.durationDays);
   if (loop.phenomenonConnection) out += field('Phenomenon Connection', loop.phenomenonConnection);
   if (loop.investigativePhenomenon) out += field('Investigative Phenomenon', loop.investigativePhenomenon);
@@ -122,10 +123,9 @@ function buildPlanningTable(unit: Unit): string {
     const loop = unit.loops[i];
     out += `### Loop ${i + 1}: ${loop.title || 'Untitled'}\n`;
 
-    const dq =
-      loop.dqRef != null
-        ? unit.drivingQuestions[loop.dqRef] ?? null
-        : null;
+    const dq = loop.dqId
+      ? unit.drivingQuestions.find((q) => q.id === loop.dqId) ?? null
+      : null;
     if (dq?.text) out += `**Driving Question:** ${dq.text}\n`;
     out += '\n';
 
@@ -222,7 +222,7 @@ export function buildMarkdownV2(unit: Unit): string {
 
   // Sensemaking Loops
   for (let i = 0; i < unit.loops.length; i++) {
-    out += buildLoop(unit.loops[i], i + 1);
+    out += buildLoop(unit.loops[i], i + 1, unit.drivingQuestions);
   }
 
   // AST Planning Table

@@ -71,10 +71,10 @@ export function ModelProgressionCard({ unit, updateUnit }: ModelProgressionCardP
           />
         </div>
 
-        {/* Timeline */}
+        {/* Horizontal timeline */}
         <div className="relative">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm text-muted">Stages</label>
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm text-muted">Model Stages</label>
             <button
               onClick={syncStages}
               className="text-sm text-teal hover:text-teal-light"
@@ -83,42 +83,71 @@ export function ModelProgressionCard({ unit, updateUnit }: ModelProgressionCardP
             </button>
           </div>
 
-          <div className="space-y-3">
-            {unit.modelStages.map((stage, i) => (
-              <div key={stage.id} className="flex items-start gap-3">
-                {/* Timeline dot */}
-                <div className="flex flex-col items-center flex-shrink-0 mt-1">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      i === 0
-                        ? 'bg-muted'
-                        : i === unit.modelStages.length - 1
-                        ? 'bg-green'
-                        : 'bg-teal'
-                    }`}
-                  />
-                  {i < unit.modelStages.length - 1 && (
-                    <div className="w-0.5 h-8 bg-border mt-1" />
-                  )}
-                </div>
+          {/* Stepper — horizontal on md+, vertical on small */}
+          <div className="flex flex-col md:flex-row md:items-start gap-0 md:gap-0 overflow-x-auto pb-2">
+            {unit.modelStages.map((stage, i) => {
+              const isFirst = i === 0;
+              const isLast = i === unit.modelStages.length - 1;
+              const nodeColor = isFirst
+                ? 'bg-muted border-muted text-muted'
+                : isLast
+                ? 'bg-green/20 border-green text-green'
+                : 'bg-teal/10 border-teal text-teal';
+              const dotColor = isFirst
+                ? 'bg-muted'
+                : isLast
+                ? 'bg-green'
+                : 'bg-teal';
 
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-muted">
-                    {stage.label}
-                  </span>
-                  <textarea
-                    value={stage.description}
-                    onChange={(e) =>
-                      updateStage(stage.id, { description: e.target.value })
-                    }
-                    placeholder="What should the model show at this stage?"
-                    className="w-full bg-surface border border-border rounded px-3 py-2 text-base focus:outline-none focus:border-teal resize-none mt-1"
-                    rows={2}
-                  />
+              return (
+                <div key={stage.id} className="flex md:flex-col md:flex-1 min-w-0">
+                  {/* Node */}
+                  <div className={`flex md:flex-col items-center md:items-center gap-2 md:gap-1 mb-2 md:mb-0`}>
+                    <div className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColor}`} />
+                    {/* Horizontal connector */}
+                    {!isLast && (
+                      <div className="hidden md:block flex-1 h-px bg-border mx-1 mt-1.5 self-start" />
+                    )}
+                  </div>
+
+                  {/* Stage card */}
+                  <div
+                    className={`flex-1 md:mt-2 mr-2 md:mr-3 rounded-lg border p-3 ${
+                      isFirst
+                        ? 'bg-surface border-border'
+                        : isLast
+                        ? 'bg-green/5 border-green/30'
+                        : 'bg-teal/5 border-teal/20'
+                    }`}
+                  >
+                    <span className={`block text-xs font-semibold mb-1.5 ${nodeColor.split(' ').slice(2).join(' ')}`}>
+                      {stage.label}
+                    </span>
+                    <textarea
+                      value={stage.description}
+                      onChange={(e) =>
+                        updateStage(stage.id, { description: e.target.value })
+                      }
+                      placeholder="What should the model show at this stage?"
+                      className="w-full bg-transparent border-0 border-b border-border/50 text-sm focus:outline-none focus:border-teal resize-none pb-1"
+                      rows={3}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
+          {/* Arrow connectors between cards on md+ — rendered as overlay */}
+          {unit.modelStages.length > 1 && (
+            <div className="hidden md:flex absolute top-[52px] left-0 right-0 pointer-events-none">
+              {unit.modelStages.slice(0, -1).map((stage) => (
+                <div key={stage.id} className="flex-1 flex justify-end pr-1">
+                  <span className="text-muted text-xs mt-0.5">→</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </CollapsibleCard>

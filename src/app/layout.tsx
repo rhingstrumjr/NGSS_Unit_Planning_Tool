@@ -34,7 +34,7 @@ export default function RootLayout({
           </a>
           <nav className="flex items-center gap-4">
             <a href="/workshop" className="text-sm text-muted hover:text-foreground transition-colors">
-              Workshop
+              AI Workshop
             </a>
             <a href="/settings" className="text-sm text-muted hover:text-foreground transition-colors">
               Settings

@@ -320,7 +320,8 @@ function parseLoop(title: string, body: string, loopIndex: number): Loop {
     id: uuid(),
     sortOrder: loopIndex,
     title,
-    dqRef,
+    dqId: null,    // resolved to UUID by the caller after DQs are built
+    dqRef,         // kept temporarily so the caller can resolve it
     durationDays,
     phenomenonConnection,
     investigativePhenomenon,
@@ -410,14 +411,23 @@ export function parseMarkdownV2(markdown: string): Unit {
     : { stages: [], template: '' };
 
   // §4+ Loops
-  const loops: Loop[] = [];
+  const rawLoops: Loop[] = [];
   let loopIndex = 0;
   for (const section of sections) {
     const loopMatch = section.title.match(/^§\d+\.\s+Sensemaking Loop \d+:\s*(.+)$/);
     if (loopMatch) {
-      loops.push(parseLoop(loopMatch[1].trim(), section.body, loopIndex++));
+      rawLoops.push(parseLoop(loopMatch[1].trim(), section.body, loopIndex++));
     }
   }
+
+  // Resolve legacy dqRef (1-based index from markdown) → dqId (UUID)
+  const loops: Loop[] = rawLoops.map((loop) => {
+    const legacyRef = (loop as Loop & { dqRef?: number }).dqRef;
+    const dqId = (legacyRef != null && legacyRef > 0)
+      ? drivingQuestions[legacyRef - 1]?.id ?? null  // markdown uses 1-based, display-accurate
+      : null;
+    return { ...loop, dqId };
+  });
 
   // Transfer Task
   const transferBody = findSection('Putting It Together');

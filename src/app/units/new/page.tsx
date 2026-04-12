@@ -175,7 +175,8 @@ export default function NewUnitPage() {
     unit.loops = state.loops.map((loopDraft, li) => {
       const loop = createBlankLoop(li);
       loop.title = loopDraft.title || `Loop ${li + 1}`;
-      loop.dqRef = loopDraft.dqIndex + 1; // 1-based reference
+      // Resolve dqIndex → dqId (UUID) using the driving questions we just built
+      loop.dqId = unit.drivingQuestions[loopDraft.dqIndex]?.id ?? null;
       loop.durationDays = loopDraft.durationDays;
       loop.targets = (state.targets[li] ?? [])
         .filter((t) => t.trim())

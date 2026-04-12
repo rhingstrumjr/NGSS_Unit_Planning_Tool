@@ -88,10 +88,11 @@ export default function WorkshopPage() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Worksheet Enhancement Workshop</h1>
+        <h1 className="text-2xl font-bold text-foreground">AI Worksheet Enhancer</h1>
         <p className="text-muted mt-1">
           Transform existing worksheets with research-backed engagement strategies.
-          Paste your worksheet, pick strategies, and get an enhanced version.
+          Paste any worksheet, choose strategies like CER scaffolding or higher-order questioning,
+          and get an NGSS-aligned enhanced version — optionally grounded in your unit&apos;s phenomenon and standards.
         </p>
       </div>
 

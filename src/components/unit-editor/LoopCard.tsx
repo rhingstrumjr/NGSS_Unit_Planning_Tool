@@ -8,6 +8,21 @@ import { AiSuggestButton } from '@/components/ui/AiSuggestButton';
 import { ResourceList } from './ResourceList';
 import { ResourceResearchDrawer } from './ResourceResearchDrawer';
 import { TargetCard } from './TargetCard';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface LoopCardProps {
   loop: Loop;
@@ -56,6 +71,25 @@ export function LoopCard({
     });
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+
+  function handleTargetDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = loop.targets.findIndex((t) => t.id === active.id);
+    const newIndex = loop.targets.findIndex((t) => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    onChange({
+      ...loop,
+      targets: arrayMove(loop.targets, oldIndex, newIndex).map((t, i) => ({
+        ...t,
+        sortOrder: i,
+      })),
+    });
+  }
+
   const content = (
       <div className="space-y-4">
         {/* Loop metadata */}
@@ -75,15 +109,15 @@ export function LoopCard({
               Driving Question #
             </label>
             <select
-              value={loop.dqRef}
+              value={loop.dqId ?? ''}
               onChange={(e) =>
-                onChange({ ...loop, dqRef: parseInt(e.target.value) || 0 })
+                onChange({ ...loop, dqId: e.target.value || null })
               }
               className="w-full bg-surface border border-border rounded px-3 py-2 text-base focus:outline-none focus:border-teal"
             >
-              <option value={0}>Select...</option>
+              <option value="">Select...</option>
               {unit.drivingQuestions.map((dq, i) => (
-                <option key={dq.id} value={i + 1}>
+                <option key={dq.id} value={dq.id}>
                   #{i + 1}: {dq.text?.slice(0, 40) || 'Untitled'}
                   {dq.text && dq.text.length > 40 ? '...' : ''}
                 </option>
@@ -216,6 +250,8 @@ export function LoopCard({
           <ResourceList
             resources={loop.resources ?? []}
             onChange={(resources) => onChange({ ...loop, resources })}
+            label="Teacher Reference Materials"
+            helpText="For your own preparation — not shared directly with students"
           />
         </div>
 
@@ -224,23 +260,37 @@ export function LoopCard({
           <h4 className="text-base font-semibold mb-2 text-amber">
             Learning Targets
           </h4>
-          {loop.targets.map((target, j) => (
-            <TargetCard
-              key={target.id}
-              target={target}
-              loopIndex={loopIndex}
-              targetIndex={j}
-              onChange={(updated) => updateTarget(target.id, updated)}
-              onRemove={() => removeTarget(target.id)}
-              onMoveUp={j > 0 && onMoveTargetUpDown ? () => onMoveTargetUpDown(target.id, 'up') : undefined}
-              onMoveDown={j < loop.targets.length - 1 && onMoveTargetUpDown ? () => onMoveTargetUpDown(target.id, 'down') : undefined}
-              onMoveTo={onMoveTargetTo ? (destLoopId) => onMoveTargetTo(target.id, destLoopId) : undefined}
-              otherLoops={otherLoops}
-              phenomenonName={unit.phenomena.find((p) => p.isPrimary)?.name}
-              loopTitle={loop.title}
-              gradeBand={unit.gradeBand}
-            />
-          ))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleTargetDragEnd}
+          >
+            <SortableContext
+              items={loop.targets.map((t) => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {loop.targets.map((target, j) => (
+                <SortableTargetWrapper key={target.id} id={target.id}>
+                  <TargetCard
+                    target={target}
+                    loopIndex={loopIndex}
+                    targetIndex={j}
+                    onChange={(updated) => updateTarget(target.id, updated)}
+                    onRemove={() => removeTarget(target.id)}
+                    onMoveUp={j > 0 && onMoveTargetUpDown ? () => onMoveTargetUpDown(target.id, 'up') : undefined}
+                    onMoveDown={j < loop.targets.length - 1 && onMoveTargetUpDown ? () => onMoveTargetUpDown(target.id, 'down') : undefined}
+                    onMoveTo={onMoveTargetTo ? (destLoopId) => onMoveTargetTo(target.id, destLoopId) : undefined}
+                    otherLoops={otherLoops}
+                    phenomenonName={unit.phenomena.find((p) => p.isPrimary)?.name}
+                    loopTitle={loop.title}
+                    gradeBand={unit.gradeBand}
+                    unitId={unit.id}
+                    loopId={loop.id}
+                  />
+                </SortableTargetWrapper>
+              ))}
+            </SortableContext>
+          </DndContext>
           <AddButton label="Add Learning Target" onClick={addTarget} />
         </div>
 
@@ -298,11 +348,49 @@ export function LoopCard({
       data-section-id={`loop-${loop.id}`}
       headerExtra={
         <span className="text-sm text-muted">
-          DQ #{loop.dqRef || '?'}
+          {loop.dqId
+            ? (() => { const idx = unit.drivingQuestions.findIndex((q) => q.id === loop.dqId); return idx >= 0 ? `DQ #${idx + 1}` : 'DQ ?'; })()
+            : 'DQ ?'}
         </span>
       }
     >
       {content}
     </CollapsibleCard>
+  );
+}
+
+/** Thin wrapper that makes a TargetCard sortable via drag handle. */
+function SortableTargetWrapper({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      className="relative"
+    >
+      {/* Drag handle — sits above the card header on the left */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="absolute left-0 top-0 h-full w-5 flex items-center justify-center text-muted/30 hover:text-muted cursor-grab active:cursor-grabbing touch-none z-10 rounded-l-lg"
+        title="Drag to reorder"
+        onClick={(e) => e.stopPropagation()}
+      >
+        ⠿
+      </button>
+      <div className="pl-5">{children}</div>
+    </div>
   );
 }

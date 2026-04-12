@@ -5,6 +5,21 @@ import type { Activity, ActivityType, Resource } from '@/lib/types';
 import { createBlankActivity } from '@/lib/defaults';
 import { AddButton } from '@/components/ui/AddButton';
 import { AiSuggestButton } from '@/components/ui/AiSuggestButton';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface AiContext {
   phenomenonName?: string;
@@ -20,6 +35,8 @@ interface ActivityListProps {
   activities: Activity[];
   onChange: (activities: Activity[]) => void;
   aiContext?: AiContext;
+  unitId?: string;
+  loopId?: string;
 }
 
 const activityTypes: { value: ActivityType; label: string }[] = [
@@ -32,7 +49,7 @@ const activityTypes: { value: ActivityType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
-export function ActivityList({ activities, onChange, aiContext }: ActivityListProps) {
+export function ActivityList({ activities, onChange, aiContext, unitId, loopId }: ActivityListProps) {
   function update(id: string, changes: Partial<Activity>) {
     onChange(activities.map((a) => (a.id === id ? { ...a, ...changes } : a)));
   }
@@ -49,13 +66,40 @@ export function ActivityList({ activities, onChange, aiContext }: ActivityListPr
     );
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = activities.findIndex((a) => a.id === active.id);
+    const newIndex = activities.findIndex((a) => a.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    onChange(
+      arrayMove(activities, oldIndex, newIndex).map((a, i) => ({
+        ...a,
+        sortOrder: i,
+      }))
+    );
+  }
+
   return (
     <div>
       <label className="block text-sm text-muted mb-1">Activities</label>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={activities.map((a) => a.id)}
+          strategy={verticalListSortingStrategy}
+        >
       <div className="space-y-2">
         {activities.map((act) => (
+          <SortableActivityItem key={act.id} id={act.id}>
           <div
-            key={act.id}
             className="bg-surface-light/20 rounded-lg p-3 border border-border space-y-2"
           >
             <div className="flex items-center gap-2">
@@ -138,6 +182,20 @@ export function ActivityList({ activities, onChange, aiContext }: ActivityListPr
                 rows={2}
               />
             </div>
+            {/* AI Workshop link */}
+            {(unitId || loopId) && (
+              <div>
+                <a
+                  href={`/workshop?${unitId ? `unitId=${unitId}` : ''}${unitId && loopId ? '&' : ''}${loopId ? `loopId=${loopId}` : ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-teal hover:underline flex items-center gap-1"
+                >
+                  ✨ Enhance a worksheet for this activity
+                </a>
+              </div>
+            )}
+
             {/* Activity Files / Links */}
             <div>
               <label className="text-sm text-muted block mb-1">
@@ -213,11 +271,48 @@ export function ActivityList({ activities, onChange, aiContext }: ActivityListPr
               </button>
             </div>
           </div>
+          </SortableActivityItem>
         ))}
       </div>
+        </SortableContext>
+      </DndContext>
       <div className="mt-1">
         <AddButton label="Add Activity" onClick={add} />
       </div>
+    </div>
+  );
+}
+
+function SortableActivityItem({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      className="relative"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="absolute left-1 top-3 text-muted/30 hover:text-muted cursor-grab active:cursor-grabbing touch-none z-10 text-sm leading-none"
+        title="Drag to reorder"
+        onClick={(e) => e.stopPropagation()}
+      >
+        ⠿
+      </button>
+      <div className="pl-5">{children}</div>
     </div>
   );
 }

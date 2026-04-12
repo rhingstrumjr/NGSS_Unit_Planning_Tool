@@ -16,6 +16,7 @@ import { TransferTaskCard } from './TransferTaskCard';
 import { PlanningTableView } from './PlanningTableView';
 import { AddButton } from '@/components/ui/AddButton';
 import { AiSuggestButton } from '@/components/ui/AiSuggestButton';
+import { computeCompleteness } from '@/lib/completeness';
 
 interface UnitEditorProps {
   unit: Unit;
@@ -121,6 +122,8 @@ export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
     if (loopIndex !== undefined) setActiveLoopIndex(loopIndex);
   }
 
+  const completeness = computeCompleteness(unit);
+
   const mainTabs = [
     { id: 'overview' as const, label: 'Overview' },
     { id: 'loops' as const, label: 'Sensemaking Loops', badge: String(unit.loops.length) },
@@ -143,6 +146,7 @@ export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
         activeTab={activeTab}
         activeLoopIndex={activeLoopIndex}
         onNavigate={handleNavigate}
+        updateUnit={updateUnit}
       />
 
       {/* Main content area */}
@@ -215,7 +219,38 @@ export function UnitEditor({ unit, updateUnit }: UnitEditorProps) {
                       className="w-20 bg-surface border border-border rounded px-3 py-2 text-base focus:outline-none focus:border-teal"
                     />
                   </div>
-                  <div className="ml-auto flex items-center gap-2">
+                  <div className="ml-auto flex items-center gap-3">
+                    {/* Completeness ring */}
+                    <div className="relative group flex items-center gap-2">
+                      <svg width="32" height="32" viewBox="0 0 32 32" className="flex-shrink-0 -rotate-90">
+                        <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" strokeWidth="3" className="text-border" />
+                        <circle
+                          cx="16" cy="16" r="13" fill="none" stroke="currentColor" strokeWidth="3"
+                          strokeDasharray={`${2 * Math.PI * 13}`}
+                          strokeDashoffset={`${2 * Math.PI * 13 * (1 - completeness.pct / 100)}`}
+                          strokeLinecap="round"
+                          className={completeness.pct === 100 ? 'text-green' : completeness.pct >= 60 ? 'text-teal' : 'text-amber'}
+                          style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                        />
+                      </svg>
+                      <span className="text-xs text-muted whitespace-nowrap">{completeness.pct}% complete</span>
+                      {/* Tooltip */}
+                      <div className="absolute right-0 top-full mt-2 z-50 hidden group-hover:block w-64 bg-surface border border-border rounded-lg shadow-lg p-3 text-xs">
+                        <p className="font-semibold text-foreground mb-2">{completeness.score}/{completeness.total} fields complete</p>
+                        <ul className="space-y-1 max-h-48 overflow-y-auto">
+                          {completeness.breakdown.filter((b) => !b.done).map((b) => (
+                            <li key={b.label} className="text-muted flex items-start gap-1.5">
+                              <span className="text-amber mt-0.5">○</span>
+                              <span>{b.label}</span>
+                            </li>
+                          ))}
+                          {completeness.breakdown.filter((b) => !b.done).length === 0 && (
+                            <li className="text-green">All fields complete! 🎉</li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+
                     <button
                       onClick={() => {
                         const md = buildMarkdownV2(unit);
