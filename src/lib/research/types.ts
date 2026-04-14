@@ -6,6 +6,8 @@ export interface ResearchedResource {
   description: string;
   whyUseful: string;
   duration?: string;
+  /** true = verified reachable, false = definitively broken, null/undefined = could not determine */
+  urlVerified?: boolean | null;
 }
 
 export interface ResearchedReading {
@@ -14,6 +16,8 @@ export interface ResearchedReading {
   source: string;
   description: string;
   readingLevel?: string;
+  /** true = verified reachable, false = definitively broken, null/undefined = could not determine */
+  urlVerified?: boolean | null;
 }
 
 export interface LoopResearchResult {

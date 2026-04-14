@@ -61,8 +61,9 @@ function ReadingCard({
   onAdd: () => void;
   added: boolean;
 }) {
+  const broken = reading.urlVerified === false;
   return (
-    <div className="bg-surface border border-border rounded-lg p-3 space-y-1">
+    <div className={`bg-surface border rounded-lg p-3 space-y-1 ${broken ? 'border-amber/40' : 'border-border'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-base font-medium text-foreground truncate">{reading.title}</p>
@@ -79,11 +80,15 @@ function ReadingCard({
           href={reading.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-teal hover:text-teal-light flex-shrink-0"
+          className={`text-sm flex-shrink-0 ${broken ? 'text-amber hover:text-amber/80' : 'text-teal hover:text-teal-light'}`}
+          title={broken ? 'Link could not be verified' : 'Open link'}
         >
-          ↗
+          {broken ? '⚠' : '↗'}
         </a>
       </div>
+      {broken && (
+        <p className="text-xs text-amber">Link could not be verified — may be broken</p>
+      )}
       <p className="text-sm text-muted">{reading.description}</p>
       <button
         onClick={onAdd}
@@ -110,9 +115,10 @@ function ResourceCard({
   addedResource: boolean;
 }) {
   const canAddActivity = resource.modality === 'lab' || resource.modality === 'teacher-demo';
+  const broken = resource.urlVerified === false;
 
   return (
-    <div className="bg-surface border border-border rounded-lg p-3 space-y-1">
+    <div className={`bg-surface border rounded-lg p-3 space-y-1 ${broken ? 'border-amber/40' : 'border-border'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-base font-medium text-foreground truncate">{resource.title}</p>
@@ -129,11 +135,15 @@ function ResourceCard({
           href={resource.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-teal hover:text-teal-light flex-shrink-0"
+          className={`text-sm flex-shrink-0 ${broken ? 'text-amber hover:text-amber/80' : 'text-teal hover:text-teal-light'}`}
+          title={broken ? 'Link could not be verified' : 'Open link'}
         >
-          ↗
+          {broken ? '⚠' : '↗'}
         </a>
       </div>
+      {broken && (
+        <p className="text-xs text-amber">Link could not be verified — may be broken</p>
+      )}
       <p className="text-sm text-muted">{resource.description}</p>
       <p className="text-sm text-foreground/60 italic">{resource.whyUseful}</p>
       <div className="flex gap-3 pt-0.5">
