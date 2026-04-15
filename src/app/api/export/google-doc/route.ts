@@ -156,13 +156,15 @@ export async function POST(req: NextRequest) {
               insertText: { location: { index }, text },
             }));
 
-            // Compute shifted indices for style requests. Because inserts were applied
-            // in reverse order, the forward shift for any original index equals the total
-            // length of all inserts that had a HIGHER original index.
+            // Compute shifted indices for style requests.
+            // Inserts were applied in descending-index order, so each insert at position P
+            // shifts all positions P+ forward. For text that was originally at index X, the
+            // accumulated shift equals the total length of all inserts at positions LESS than X
+            // (each of those inserts happened after X's insert and pushed X forward).
             const sortedAsc = [...inserts].sort((a, b) => a.index - b.index);
             const shiftFor = (origIdx: number) =>
               sortedAsc
-                .filter((ins) => ins.index > origIdx)
+                .filter((ins) => ins.index < origIdx)
                 .reduce((sum, ins) => sum + ins.text.length, 0);
 
             // Bold header row

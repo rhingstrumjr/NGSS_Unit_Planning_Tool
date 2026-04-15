@@ -38,22 +38,24 @@ function buildActivity(a: Activity): string {
   return out;
 }
 
+const PLACEHOLDER = '[To be completed]';
+
 function buildTarget(target: Target, loopNum: number, targetNum: number): string {
   let out = '';
   out += section(`### Learning Target ${loopNum}.${targetNum}: ${target.title || 'Untitled'}`);
   out += '\n';
-  if (target.dciAlignment) out += field('DCI', target.dciAlignment);
-  if (target.sepAlignment) out += field('SEP', target.sepAlignment);
-  if (target.cccAlignment) out += field('CCC', target.cccAlignment);
+  // NGSS alignment — always shown so teachers are reminded to fill them in
+  out += field('DCI', target.dciAlignment || PLACEHOLDER);
+  out += field('SEP', target.sepAlignment || PLACEHOLDER);
+  out += field('CCC', target.cccAlignment || PLACEHOLDER);
+
+  // Summary Table — always shown with placeholders for empty cells
   const st = target.summaryTable;
-  const hasSummary = st.activity || st.observations || st.reasoning || st.connectionToPhenomenon;
-  if (hasSummary) {
-    out += '- **Summary Table:**\n';
-    if (st.activity) out += `  - Activity / Big Idea: ${st.activity}\n`;
-    if (st.observations) out += `  - What we learned: ${st.observations}\n`;
-    if (st.reasoning) out += `  - How it helps my understanding: ${st.reasoning}\n`;
-    if (st.connectionToPhenomenon) out += `  - What do I need to modify in my model: ${st.connectionToPhenomenon}\n`;
-  }
+  out += '- **Summary Table:**\n';
+  out += `  - Activity / Big Idea: ${st.activity || PLACEHOLDER}\n`;
+  out += `  - What we learned: ${st.observations || PLACEHOLDER}\n`;
+  out += `  - How it helps my understanding: ${st.reasoning || PLACEHOLDER}\n`;
+  out += `  - What do I need to modify in my model: ${st.connectionToPhenomenon || PLACEHOLDER}\n`;
 
   if (target.activities.length) {
     out += '- **Activities:**\n';
@@ -66,6 +68,8 @@ function buildTarget(target: Target, loopNum: number, targetNum: number): string
     const f = target.formative;
     const link = f.resourceUrl ? ` [${f.resourceTitle || 'Link'}](${f.resourceUrl})` : '';
     out += field('Formative', `${f.format}: ${f.text}${link}`);
+  } else {
+    out += field('Formative', PLACEHOLDER);
   }
 
   out += buildResources(target.resources);
@@ -79,9 +83,10 @@ function buildLoop(loop: Loop, loopNum: number, dqs: DrivingQuestion[]): string 
   const dqIdx = loop.dqId ? dqs.findIndex((q) => q.id === loop.dqId) : -1;
   if (dqIdx >= 0) out += field('Driving Question', `#${dqIdx + 1}`);
   if (loop.durationDays) out += field('Estimated Duration', loop.durationDays);
-  if (loop.phenomenonConnection) out += field('Phenomenon Connection', loop.phenomenonConnection);
-  if (loop.investigativePhenomenon) out += field('Investigative Phenomenon', loop.investigativePhenomenon);
-  if (loop.navigationRoutine) out += field('Navigation Routine', loop.navigationRoutine);
+  // Critical narrative fields — always shown with placeholders so nothing is accidentally lost
+  out += field('Phenomenon Connection', loop.phenomenonConnection || PLACEHOLDER);
+  out += field('Investigative Phenomenon', loop.investigativePhenomenon || PLACEHOLDER);
+  out += field('Navigation Routine', loop.navigationRoutine || PLACEHOLDER);
   if (loop.slidesUrl) out += field('Slides', loop.slidesUrl);
 
   if (loop.resources?.length) {
@@ -94,10 +99,8 @@ function buildLoop(loop: Loop, loopNum: number, dqs: DrivingQuestion[]): string 
     out += buildTarget(loop.targets[t], loopNum, t + 1);
   }
 
-  if (loop.problematizingRoutine) {
-    out += '\n';
-    out += field('Problematizing', loop.problematizingRoutine);
-  }
+  out += '\n';
+  out += field('Problematizing', loop.problematizingRoutine || PLACEHOLDER);
 
   return out;
 }

@@ -258,15 +258,18 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
     blank();
   }
 
+  const PLACEHOLDER = '[To be completed]';
+
   // Sensemaking Loops
   for (let li = 0; li < unit.loops.length; li++) {
     const loop = unit.loops[li];
     heading(`Loop ${li + 1}: ${loop.title || 'Untitled Loop'}`, 2);
 
     if (loop.durationDays) labeled('Estimated Duration', `${loop.durationDays} days`);
-    if (loop.navigationRoutine) labeled('Navigation Routine', loop.navigationRoutine);
-    if (loop.phenomenonConnection) labeled('Phenomenon Connection', loop.phenomenonConnection);
-    if (loop.investigativePhenomenon) labeled('Investigative Phenomenon', loop.investigativePhenomenon);
+    // Critical narrative fields — always shown with placeholders so nothing is accidentally lost
+    labeled('Navigation Routine', loop.navigationRoutine || PLACEHOLDER);
+    labeled('Phenomenon Connection', loop.phenomenonConnection || PLACEHOLDER);
+    labeled('Investigative Phenomenon', loop.investigativePhenomenon || PLACEHOLDER);
     if (loop.slidesUrl) labeledLink('Slides', loop.slidesUrl, loop.slidesUrl);
     if (loop.resources?.length) {
       paragraph('Loop Resources:');
@@ -281,25 +284,20 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
       const target = loop.targets[ti];
       heading(`${li + 1}.${ti + 1}  ${target.title || 'Untitled Target'}`, 3);
 
-      const alignment = [
-        target.dciAlignment && `DCI: ${target.dciAlignment}`,
-        target.sepAlignment && `SEP: ${target.sepAlignment}`,
-        target.cccAlignment && `CCC: ${target.cccAlignment}`,
-      ]
-        .filter(Boolean)
-        .join('  ·  ');
-      if (alignment) paragraph(alignment);
+      // NGSS alignment — always shown so teachers are reminded to fill them in
+      const dci = target.dciAlignment || PLACEHOLDER;
+      const sep = target.sepAlignment || PLACEHOLDER;
+      const ccc = target.cccAlignment || PLACEHOLDER;
+      paragraph(`DCI: ${dci}  ·  SEP: ${sep}  ·  CCC: ${ccc}`);
 
-      // Summary Table (AST)
+      // Summary Table (AST) — always shown with placeholders
       const st = target.summaryTable;
-      if (st.activity || st.observations || st.reasoning || st.connectionToPhenomenon) {
-        blank();
-        paragraph('Summary Table (AST):');
-        if (st.activity) labeled('  Activity / Big Idea', st.activity);
-        if (st.observations) labeled('  What we learned', st.observations);
-        if (st.reasoning) labeled('  How it helps my understanding', st.reasoning);
-        if (st.connectionToPhenomenon) labeled('  What do I need to modify in my model', st.connectionToPhenomenon);
-      }
+      blank();
+      paragraph('Summary Table (AST):');
+      labeled('  Activity / Big Idea', st.activity || PLACEHOLDER);
+      labeled('  What we learned', st.observations || PLACEHOLDER);
+      labeled('  How it helps my understanding', st.reasoning || PLACEHOLDER);
+      labeled('  What do I need to modify in my model', st.connectionToPhenomenon || PLACEHOLDER);
 
       // Activities
       if (target.activities.length > 0) {
@@ -323,13 +321,15 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
         }
       }
 
-      // Formative
+      // Formative — always shown
+      blank();
       if (target.formative) {
-        blank();
         labeled('Formative Assessment', `[${target.formative.format}] ${target.formative.text}`);
         if (target.formative.resourceUrl) {
           labeledLink('  Resource', target.formative.resourceTitle || target.formative.resourceUrl, target.formative.resourceUrl);
         }
+      } else {
+        labeled('Formative Assessment', PLACEHOLDER);
       }
 
       // Target Resources
@@ -344,11 +344,9 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
       blank();
     }
 
-    // Problematizing routine goes after all targets
-    if (loop.problematizingRoutine) {
-      labeled('Problematizing Routine', loop.problematizingRoutine);
-      blank();
-    }
+    // Problematizing routine goes after all targets — always shown
+    labeled('Problematizing Routine', loop.problematizingRoutine || PLACEHOLDER);
+    blank();
 
   }
 
