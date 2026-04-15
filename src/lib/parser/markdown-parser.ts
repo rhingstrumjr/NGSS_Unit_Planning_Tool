@@ -447,13 +447,17 @@ export function parseMarkdownV2(markdown: string): Unit {
     ? parseModelProgression(modelBody)
     : { stages: [], template: '' };
 
-  // §4+ Loops
+  // §5+ Loops (user-authored). Loop 0 is the auto-synthesized anchoring
+  // phenomenon launch emitted by the builder — skip it so round-trips don't
+  // accumulate duplicate launch loops in unit.loops[].
   const rawLoops: Loop[] = [];
   let loopIndex = 0;
   for (const section of sections) {
-    const loopMatch = section.title.match(/^§\d+\.\s+Sensemaking Loop \d+:\s*(.+)$/);
+    const loopMatch = section.title.match(/^§\d+\.\s+Sensemaking Loop (\d+):\s*(.+)$/);
     if (loopMatch) {
-      rawLoops.push(parseLoop(loopMatch[1].trim(), section.body, loopIndex++));
+      const loopNumber = parseInt(loopMatch[1], 10);
+      if (loopNumber === 0) continue; // skip auto-synthesized anchoring launch
+      rawLoops.push(parseLoop(loopMatch[2].trim(), section.body, loopIndex++));
     }
   }
 

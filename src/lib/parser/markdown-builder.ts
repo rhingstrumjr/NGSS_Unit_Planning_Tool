@@ -76,9 +76,77 @@ function buildTarget(target: Target, loopNum: number, targetNum: number): string
   return out;
 }
 
+/**
+ * Emit an auto-synthesized "Sensemaking Loop 0: Anchoring Phenomenon Launch"
+ * block before the user-authored loops. This guarantees every exported unit
+ * contains a Day 1 launch lesson even though the anchoring lesson itself is
+ * not a first-class editable entity in the unit model — it is derived from
+ * §1 Unit Overview (primary phenomenon) and §3 Model Progression (initial
+ * model). The companion parser in markdown-parser.ts skips this loop on
+ * ingest so round-trips don't duplicate it.
+ */
+function buildAnchoringLoop(unit: Unit): string {
+  const primary = unit.phenomena.find((p) => p.isPrimary) ?? unit.phenomena[0];
+  if (!primary || !primary.name) return '';
+
+  const initialStage =
+    unit.modelStages.find((s) => /initial/i.test(s.label)) ?? unit.modelStages[0] ?? null;
+  const initialModelPrompt = initialStage?.description || 'Draw a first-draft model of the phenomenon before any instruction.';
+
+  const dciCode = unit.standards[0]?.code || '[inherit from unit standards]';
+
+  const investigative = primary.description
+    ? `${primary.name} — ${primary.description}`
+    : primary.name;
+
+  const mediaLink = primary.mediaUrl
+    ? `Cold view of [${primary.name}](${primary.mediaUrl})`
+    : `Cold view of the phenomenon`;
+
+  let out = '';
+  out += section('## §4. Sensemaking Loop 0: Anchoring Phenomenon Launch');
+  out += '\n';
+  out += field('Driving Question', 'Unit Opener');
+  out += field('Estimated Duration', 1);
+  out += field(
+    'Phenomenon Connection',
+    'Students encounter the anchoring phenomenon for the first time and build the shared questions the unit will answer.'
+  );
+  out += field('Investigative Phenomenon', investigative);
+  out += field(
+    'Navigation Routine',
+    'Launch the phenomenon cold. Students watch/observe, complete a Notice & Wonder routine, and contribute questions to the Driving Question Board.'
+  );
+  out += '\n';
+
+  out += section('### Learning Target 0.1: Observe the anchoring phenomenon and generate driving questions');
+  out += '\n';
+  out += field('DCI', dciCode);
+  out += field('SEP', 'Asking Questions and Defining Problems');
+  out += field('CCC', 'Patterns');
+  out += '- **Summary Table:**\n';
+  out += '  - Activity / Big Idea: Phenomenon launch + Notice/Wonder + Initial Model\n';
+  out += '  - What we learned: (captured live by students)\n';
+  out += '  - How it helps my understanding: Defines the mystery the unit must resolve\n';
+  out += '  - What do I need to modify in my model: Create the first-draft initial model\n';
+  out += '- **Activities:**\n';
+  out += `  - Video: Phenomenon Launch (15 min) — ${mediaLink}\n`;
+  out += '  - Discussion: Notice & Wonder (15 min) — Individual → pair → whole-class. Build the Driving Question Board.\n';
+  out += `  - Modeling: Initial Model (20 min) — ${initialModelPrompt}\n`;
+  out += field('Formative', 'Observation: Initial model sketch and contributions to the Driving Question Board');
+
+  out += '\n';
+  out += field(
+    'Problematizing',
+    'We have big questions but no answers yet. Loop 1 begins tomorrow — we start by investigating the first mystery.'
+  );
+
+  return out;
+}
+
 function buildLoop(loop: Loop, loopNum: number, dqs: DrivingQuestion[]): string {
   let out = '';
-  out += section(`## §${loopNum + 3}. Sensemaking Loop ${loopNum}: ${loop.title || 'Untitled'}`);
+  out += section(`## §${loopNum + 4}. Sensemaking Loop ${loopNum}: ${loop.title || 'Untitled'}`);
   out += '\n';
   const dqIdx = loop.dqId ? dqs.findIndex((q) => q.id === loop.dqId) : -1;
   if (dqIdx >= 0) out += field('Driving Question', `#${dqIdx + 1}`);
@@ -233,7 +301,10 @@ export function buildMarkdownV2(unit: Unit): string {
     out += field(stage.label, stage.description);
   }
 
-  // Sensemaking Loops
+  // Auto-synthesized anchoring phenomenon launch (Loop 0) — always §4 when present
+  out += buildAnchoringLoop(unit);
+
+  // Sensemaking Loops (user-authored, numbered 1+ and rendered at §5+)
   for (let i = 0; i < unit.loops.length; i++) {
     out += buildLoop(unit.loops[i], i + 1, unit.drivingQuestions);
   }
