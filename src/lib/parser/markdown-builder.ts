@@ -143,7 +143,7 @@ function buildPlanningTable(unit: Unit): string {
       const st = target.summaryTable;
 
       // Link to first google-doc resource across all activities; fall back to any resource
-      const allResources = target.activities.flatMap((a) => a.resources);
+      const allResources = target.activities.flatMap((a) => a.resources ?? []);
       const primaryResource =
         allResources.find((r) => r.type === 'google-doc') ?? allResources[0] ?? null;
       const activityText = escapePipeChars(st.activity || '');

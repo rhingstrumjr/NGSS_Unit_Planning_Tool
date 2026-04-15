@@ -55,7 +55,7 @@ export function buildPlanningTableData(unit: Unit): PlanningTableData {
       const st = target.summaryTable;
 
       // Activity / Big Idea cell — collect primary resource URL for hyperlinking
-      const allResources = target.activities.flatMap((a) => a.resources);
+      const allResources = target.activities.flatMap((a) => a.resources ?? []);
       const primaryResource =
         allResources.find((r) => r.type === 'google-doc') ?? allResources[0] ?? null;
       if (primaryResource?.url) {
