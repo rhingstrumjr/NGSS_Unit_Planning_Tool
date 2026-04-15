@@ -185,7 +185,11 @@ function parseOverview(block: string) {
   const resourcesMatch = block.match(/\*\*Resources:?\*\*:?([\s\S]*?)(?=\n\s*-\s*\*\*[^R]|$)/);
   const resources = resourcesMatch ? parseResourceBlock(resourcesMatch[1]) : [];
 
-  return { phenomenon, description, unitDrivingQuestion, gaplessExplanation, standards, slidesUrl, resources };
+  // Fix 1: parse Grade Band and Course
+  const gradeBand = extractField(block, 'Grade Band');
+  const course = extractField(block, 'Course');
+
+  return { phenomenon, description, unitDrivingQuestion, gaplessExplanation, standards, slidesUrl, resources, gradeBand, course };
 }
 
 function parsePredictedDQs(block: string): string[] {
@@ -212,41 +216,68 @@ function parseModelProgression(block: string): { stages: ModelStage[]; template:
 
 function parseSummaryTable(block: string): SummaryTableRow {
   const table = createBlankSummaryTable();
-  const summaryMatch = block.match(/\*\*Summary Table:?\*\*:?([\s\S]*?)(?=\n\s*-\s*\*\*|###|$)/);
+  const summaryMatch = block.match(/\*\*Summary Table:?\*\*:?([\s\S]*?)(?=\n-\s*\*\*|###|$)/);
   if (!summaryMatch) return table;
 
-  const activity = summaryMatch[1].match(/Activity:\s*(.+)/)?.[1]?.trim() ?? '';
-  const observations = summaryMatch[1].match(/Observations?:\s*(.+)/)?.[1]?.trim() ?? '';
-  const reasoning = summaryMatch[1].match(/Reasoning:\s*(.+)/)?.[1]?.trim() ?? '';
-  const connection = summaryMatch[1].match(/Connection(?:\s+to\s+Phenomenon)?:\s*(.+)/)?.[1]?.trim() ?? '';
+  // Fix 5: support both legacy labels and builder-output labels
+  const activity =
+    summaryMatch[1].match(/Activity(?:\s*\/\s*Big Idea)?:\s*(.+)/i)?.[1]?.trim() ?? '';
+  const observations =
+    summaryMatch[1].match(/(?:Observations?|What we learned):\s*(.+)/i)?.[1]?.trim() ?? '';
+  const reasoning =
+    summaryMatch[1].match(/(?:Reasoning|How it helps my understanding):\s*(.+)/i)?.[1]?.trim() ?? '';
+  const connection =
+    summaryMatch[1].match(
+      /(?:Connection(?:\s+to\s+Phenomenon)?|What do I need to modify in my model):\s*(.+)/i
+    )?.[1]?.trim() ?? '';
 
   return { activity, observations, reasoning, connectionToPhenomenon: connection };
 }
 
 function parseActivities(block: string): Activity[] {
-  const activitiesMatch = block.match(/\*\*Activities:?\*\*:?([\s\S]*?)(?=\n\s*-\s*\*\*|###|$)/);
+  // Fix 3 & 4: stop only at 0-indent "- **Field:**" lines so key-question/resource
+  // sub-bullets (4-space indent) are included in the activities block.
+  const activitiesMatch = block.match(/\*\*Activities:?\*\*:?([\s\S]*?)(?=\n-\s*\*\*|###|$)/);
   if (!activitiesMatch) return [];
 
-  const activities: Activity[] = [];
-  // Match: - Type: Title (Xmin/X min) — description
-  const actRegex = /^\s{2,}-\s+(\w+):\s+(.+?)(?:\s+\((\d+)\s*min\))?\s*(?:—\s*(.+))?$/gm;
-  let m;
-  let sortOrder = 0;
-  while ((m = actRegex.exec(activitiesMatch[1])) !== null) {
-    const typeRaw = m[1].toLowerCase() as ActivityType;
-    const validTypes: ActivityType[] = ['lab', 'reading', 'simulation', 'discussion', 'modeling', 'video', 'other'];
-    activities.push({
-      id: uuid(),
-      sortOrder: sortOrder++,
-      type: validTypes.includes(typeRaw) ? typeRaw : 'other',
-      title: m[2]?.trim() ?? '',
-      durationMinutes: parseInt(m[3] ?? '0') || 0,
-      description: m[4]?.trim() ?? '',
-      keyQuestions: '',
-      resources: [],
-    });
+  const activitiesBlock = activitiesMatch[1];
+  const validTypes: ActivityType[] = ['lab', 'reading', 'simulation', 'discussion', 'modeling', 'video', 'other'];
+
+  // Locate all activity-start lines: "  - Type: Title (X min) — description"
+  const actLineRegex = /^\s{2,}-\s+(\w+):\s+(.+?)(?:\s+\((\d+)\s*min\))?\s*(?:—\s*(.+))?$/gm;
+  const actLineMatches: RegExpExecArray[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = actLineRegex.exec(activitiesBlock)) !== null) {
+    actLineMatches.push(m);
   }
-  return activities;
+
+  return actLineMatches.map((lineMatch, i) => {
+    // subBlock: everything after this activity's header line up to the next activity's header
+    const subStart = lineMatch.index + lineMatch[0].length;
+    const subEnd =
+      i + 1 < actLineMatches.length ? actLineMatches[i + 1].index : activitiesBlock.length;
+    const subBlock = activitiesBlock.slice(subStart, subEnd);
+
+    const typeRaw = lineMatch[1].toLowerCase() as ActivityType;
+
+    // Fix 3: extract key questions from the sub-block
+    const keyQuestions =
+      subBlock.match(/\*\*Key Questions:?\*\*:?\s*(.+)/)?.[1]?.trim() ?? '';
+
+    // Fix 4: extract resource links from the sub-block
+    const resources = parseResourceBlock(subBlock);
+
+    return {
+      id: uuid(),
+      sortOrder: i,
+      type: validTypes.includes(typeRaw) ? typeRaw : 'other',
+      title: lineMatch[2]?.trim() ?? '',
+      durationMinutes: parseInt(lineMatch[3] ?? '0') || 0,
+      description: lineMatch[4]?.trim() ?? '',
+      keyQuestions,
+      resources,
+    };
+  });
 }
 
 function parseTarget(block: string): Omit<Target, 'id' | 'sortOrder' | 'title'> {
@@ -316,6 +347,12 @@ function parseLoop(title: string, body: string, loopIndex: number): Loop {
     return { id: uuid(), sortOrder: i, title: tm.title, ...parsed };
   });
 
+  // Fix 2: parse loop-level resources from the preamble before the first ### target heading
+  const firstTargetIdx = body.search(/^### /m);
+  const preamble = firstTargetIdx >= 0 ? body.slice(0, firstTargetIdx) : body;
+  const loopResourcesSection = preamble.match(/\*\*Resources:?\*\*:?([\s\S]*)/);
+  const loopResources = loopResourcesSection ? parseResourceBlock(loopResourcesSection[1]) : [];
+
   return {
     id: uuid(),
     sortOrder: loopIndex,
@@ -329,7 +366,7 @@ function parseLoop(title: string, body: string, loopIndex: number): Loop {
     problematizingRoutine,
     slidesUrl,
     targets,
-    resources: [],
+    resources: loopResources,
   };
 }
 
@@ -463,8 +500,8 @@ export function parseMarkdownV2(markdown: string): Unit {
   return {
     id: uuid(),
     title,
-    gradeBand: '',
-    course: '',
+    gradeBand: overview.gradeBand,
+    course: overview.course,
     estimatedDays: loops.reduce((sum, l) => sum + l.durationDays, 0),
     phenomena,
     phenomenonSlidesUrl: overview.slidesUrl,

@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { ResearchContext, LoopResearchResult, TargetResearchResult } from '@/lib/research/types';
+import type {
+  ResearchContext,
+  LoopResearchResult,
+  TargetResearchResult,
+  ResearchedResource,
+  ResearchedReading,
+} from '@/lib/research/types';
 
 const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+// ============================================================================
+// Prompt Construction
+// ============================================================================
+
 const URL_RULES = `
-IMPORTANT URL RULES:
-- Search for each resource before including it. Only include URLs you found in search results — never construct or recall URLs from memory.
-- For YouTube videos: search the video title and use the exact URL from the search result. Never guess or construct video IDs.
-- If you cannot find a real URL via search for a resource, omit that resource entirely rather than inventing a URL.`;
+URL GUIDANCE:
+- Prefer URLs you found in your search results over ones you recall from memory.
+- For YouTube, search "[title] YouTube" and copy the exact URL from the search result rather than guessing a video ID.
+- If your direct URL turns out to be wrong, we'll show the teacher a search link as a fallback — but please try to give accurate URLs.`;
 
 function buildLoopPrompt(ctx: Extract<ResearchContext, { tier: 'loop' }>): string {
   const dciList = ctx.dciConcepts.filter(Boolean).join(', ') || 'the key science concepts';
@@ -47,8 +57,8 @@ Search the web and find the following resources. Return ONLY valid JSON (no mark
 }
 
 Requirements:
-- "readings": 2-3 reading passages/articles appropriate for ${ctx.gradeBand} students that synthesize the loop concepts. Include real, working URLs from reputable sources (Khan Academy, PhET, CK-12, NGSS-aligned sites, science news sites).
-- "absentStudent": 1-2 YouTube videos (or reputable educational videos) a student can watch independently to catch up on the whole loop. Include real YouTube URLs.
+- "readings": 2-3 reading passages/articles appropriate for ${ctx.gradeBand} students that synthesize the loop concepts. Use reputable sources (Khan Academy, PhET, CK-12, NGSS-aligned sites, science news sites).
+- "absentStudent": 1-2 YouTube videos (or reputable educational videos) a student can watch independently to catch up on the whole loop.
 - "discussionQuestions": 3-4 discussion questions connecting the loop concepts to the anchoring phenomenon "${ctx.phenomenonName || 'the phenomenon'}".
 ${URL_RULES}
 
@@ -88,7 +98,7 @@ Requirements:
   2. "teacher-demo" — teacher-led demonstrations of the concept
   3. "video" — YouTube or educational videos explaining the concept
   4. "reading" — reading passages, articles, or text resources
-- Target ${ctx.gradeBand} level. Use real, working URLs from reputable sources (PhET, NSTA, CK-12, Khan Academy, YouTube, Teachers Pay Teachers for free resources, science museum sites).
+- Target ${ctx.gradeBand} level. Use reputable sources (PhET, NSTA, CK-12, Khan Academy, YouTube, Teachers Pay Teachers for free resources, science museum sites).
 - Total: ~8-12 resources across all modalities.
 ${URL_RULES}
 
@@ -99,41 +109,107 @@ function stripJsonFences(text: string): string {
   return text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 }
 
-// Extract real URLs from Gemini's search grounding metadata
-function extractGroundingUrls(data: unknown): string[] {
-  const chunks =
-    (data as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
-  return chunks
-    .map((c: any) => c?.web?.uri)
-    .filter((u: unknown): u is string => typeof u === 'string');
-}
+// ============================================================================
+// Grounding — resolve Gemini's redirect wrappers to real source URLs
+// ============================================================================
 
-// If a resource URL isn't in grounding results, try to substitute a real search-result URL
-// from the same domain. Falls back to the original if no match.
-function resolveUrl(resourceUrl: string, groundingUrls: string[]): string {
-  if (!resourceUrl) return resourceUrl;
-  if (groundingUrls.includes(resourceUrl)) return resourceUrl;
+// Gemini's groundingChunks[].web.uri is a vertexaisearch.cloud.google.com/grounding-api-redirect/...
+// URL that redirects to the actual source. Follow the redirect to get the real URL.
+async function resolveGroundingUrl(wrapperUrl: string): Promise<string | null> {
   try {
-    const resourceHost = new URL(resourceUrl).hostname;
-    const match = groundingUrls.find((u) => {
-      try {
-        return new URL(u).hostname === resourceHost;
-      } catch {
-        return false;
-      }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(wrapperUrl, {
+      method: 'HEAD',
+      redirect: 'follow',
+      signal: controller.signal,
     });
-    return match ?? resourceUrl;
+    clearTimeout(timeout);
+    return res.ok ? res.url : null;
   } catch {
-    return resourceUrl;
+    return null;
   }
 }
+
+async function extractGroundingSources(
+  data: unknown
+): Promise<Array<{ url: string; title: string }>> {
+  const chunks = (data as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  const sources = await Promise.all(
+    chunks.map(async (c: any) => {
+      const wrapperUrl = c?.web?.uri;
+      const title = c?.web?.title ?? '';
+      if (typeof wrapperUrl !== 'string') return null;
+      const realUrl = await resolveGroundingUrl(wrapperUrl);
+      return realUrl ? { url: realUrl, title } : null;
+    })
+  );
+  return sources.filter((s): s is { url: string; title: string } => s !== null);
+}
+
+// ============================================================================
+// Title similarity for matching AI resources to grounding sources
+// ============================================================================
+
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Jaccard-style similarity over word tokens (length > 2 to skip stopwords)
+function titleSimilarity(a: string, b: string): number {
+  const aw = new Set(normalizeForMatch(a).split(' ').filter((w) => w.length > 2));
+  const bw = new Set(normalizeForMatch(b).split(' ').filter((w) => w.length > 2));
+  if (aw.size === 0 || bw.size === 0) return 0;
+  let intersect = 0;
+  for (const w of aw) if (bw.has(w)) intersect++;
+  return intersect / Math.min(aw.size, bw.size);
+}
+
+function findGroundingMatch(
+  resourceTitle: string,
+  resourceUrl: string,
+  sources: Array<{ url: string; title: string }>
+): string | null {
+  // 1. Exact URL match (rare — AI usually writes different URLs than grounding)
+  const exact = sources.find((s) => s.url === resourceUrl);
+  if (exact) return exact.url;
+  // 2. Best title match above threshold
+  let best = { score: 0, url: null as string | null };
+  for (const s of sources) {
+    const score = titleSimilarity(resourceTitle, s.title);
+    if (score > best.score) best = { score, url: s.url };
+  }
+  return best.score >= 0.5 ? best.url : null;
+}
+
+// ============================================================================
+// Search URL builders — guaranteed-working fallbacks
+// ============================================================================
+
+type Modality = 'lab' | 'teacher-demo' | 'video' | 'reading' | 'simulation';
+
+function buildSearchUrl(title: string, modality: Modality | undefined, source: string): string {
+  const q = encodeURIComponent(title);
+  if (modality === 'video') {
+    return `https://www.youtube.com/results?search_query=${q}`;
+  }
+  if (modality === 'simulation') {
+    // PhET site search — most simulations live here
+    return `https://phet.colorado.edu/en/simulations/filter?search=${q}`;
+  }
+  // reading / lab / teacher-demo / unknown: Google search, with source hint if useful
+  const sourceHint = source ? `+${encodeURIComponent(source)}` : '';
+  return `https://www.google.com/search?q=${q}${sourceHint}`;
+}
+
+// ============================================================================
+// URL verification (unchanged logic from v1)
+// ============================================================================
 
 function isYouTubeUrl(url: string): boolean {
   return url.includes('youtube.com/watch') || url.includes('youtu.be/');
 }
 
-// YouTube's oEmbed API properly returns 404 for non-existent video IDs,
-// whereas the watch page always returns HTTP 200 even for missing videos.
 async function verifyYouTubeUrl(url: string): Promise<boolean | null> {
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
@@ -143,9 +219,9 @@ async function verifyYouTubeUrl(url: string): Promise<boolean | null> {
     clearTimeout(timeout);
     if (res.ok) return true;
     if (res.status === 404) return false;
-    return null; // private / unlisted — can't confirm either way
+    return null;
   } catch {
-    return false; // timeout or network error
+    return false;
   }
 }
 
@@ -161,13 +237,60 @@ async function verifyUrl(url: string): Promise<boolean | null> {
       redirect: 'follow',
     });
     clearTimeout(timeout);
-    if (res.status === 404) return false;   // definitively gone
-    if (res.ok) return true;                // 200-299: reachable
-    return null;                            // other 4xx/5xx: site may block HEAD
+    if (res.status === 404) return false;
+    if (res.ok) return true;
+    return null;
   } catch {
-    return false; // DNS failure, SSL error, or timeout
+    return false;
   }
 }
+
+// ============================================================================
+// Per-resource processing: pick direct URL (via grounding) or fall back to search URL
+// ============================================================================
+
+type ProcessedFields = {
+  url: string;
+  searchUrl: string;
+  urlVerified?: boolean | null;
+  isSearchFallback?: boolean;
+};
+
+async function processResource(
+  title: string,
+  aiUrl: string,
+  modality: Modality | undefined,
+  source: string,
+  groundingSources: Array<{ url: string; title: string }>
+): Promise<ProcessedFields> {
+  const searchUrl = buildSearchUrl(title, modality, source);
+
+  // Try to find a real URL from grounding (via title similarity)
+  const groundedUrl = findGroundingMatch(title, aiUrl, groundingSources);
+
+  // Candidate direct URL: prefer grounded URL; if none, try the AI's URL as a last resort
+  const candidate = groundedUrl ?? aiUrl;
+  if (!candidate) {
+    return { url: searchUrl, searchUrl, urlVerified: null, isSearchFallback: true };
+  }
+
+  const verified = await verifyUrl(candidate);
+  if (verified === true) {
+    return { url: candidate, searchUrl, urlVerified: true, isSearchFallback: false };
+  }
+
+  // Verification failed or ambiguous — fall back to the guaranteed-working search URL
+  return {
+    url: searchUrl,
+    searchUrl,
+    urlVerified: verified,
+    isSearchFallback: true,
+  };
+}
+
+// ============================================================================
+// Route handler
+// ============================================================================
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -218,22 +341,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Extract real URLs from Gemini's search grounding — these are verified search results
-    const groundingUrls = extractGroundingUrls(data);
+    // Resolve grounding redirect wrappers to real source URLs (in parallel with JSON parse)
+    const groundingSources = await extractGroundingSources(data);
 
     if (ctx.tier === 'loop') {
       const loopParsed = parsed as LoopResearchResult;
       const [readings, absentStudent] = await Promise.all([
         Promise.all(
-          (loopParsed.readings ?? []).map(async (r) => {
-            const url = resolveUrl(r.url, groundingUrls);
-            return { ...r, url, urlVerified: await verifyUrl(url) };
+          (loopParsed.readings ?? []).map(async (r): Promise<ResearchedReading> => {
+            const processed = await processResource(
+              r.title,
+              r.url,
+              undefined, // readings have no modality
+              r.source,
+              groundingSources
+            );
+            return { ...r, ...processed };
           })
         ),
         Promise.all(
-          (loopParsed.absentStudent ?? []).map(async (r) => {
-            const url = resolveUrl(r.url, groundingUrls);
-            return { ...r, url, urlVerified: await verifyUrl(url) };
+          (loopParsed.absentStudent ?? []).map(async (r): Promise<ResearchedResource> => {
+            const processed = await processResource(
+              r.title,
+              r.url,
+              r.modality,
+              r.source,
+              groundingSources
+            );
+            return { ...r, ...processed };
           })
         ),
       ]);
@@ -241,9 +376,15 @@ export async function POST(req: NextRequest) {
     } else {
       const targetParsed = parsed as TargetResearchResult;
       const resources = await Promise.all(
-        (targetParsed.resources ?? []).map(async (r) => {
-          const url = resolveUrl(r.url, groundingUrls);
-          return { ...r, url, urlVerified: await verifyUrl(url) };
+        (targetParsed.resources ?? []).map(async (r): Promise<ResearchedResource> => {
+          const processed = await processResource(
+            r.title,
+            r.url,
+            r.modality,
+            r.source,
+            groundingSources
+          );
+          return { ...r, ...processed };
         })
       );
       return NextResponse.json({ resources });

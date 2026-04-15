@@ -113,45 +113,52 @@ function escapePipeChars(text: string): string {
 function buildPlanningTable(unit: Unit): string {
   if (unit.loops.length === 0) return '';
 
-  let out = section('## AST Planning Table');
+  // One consolidated table with Driving Question as first column.
+  // DQ text appears only in the first target row of each loop; blank thereafter.
+  let out = section('## Quick Reference: Planning Table');
   out += '\n';
-
-  const header = '| Activity / Big Idea | What we learned | How it helps my understanding of my topic | What do I need to modify in my model |';
-  const divider = '|---|---|---|---|';
+  out +=
+    '| Driving Question | Activity / Big Idea | What we learned | How it helps my understanding of my topic | What do I need to modify in my model |\n';
+  out += '|---|---|---|---|---|\n';
 
   for (let i = 0; i < unit.loops.length; i++) {
     const loop = unit.loops[i];
-    out += `### Loop ${i + 1}: ${loop.title || 'Untitled'}\n`;
-
     const dq = loop.dqId
       ? unit.drivingQuestions.find((q) => q.id === loop.dqId) ?? null
       : null;
-    if (dq?.text) out += `**Driving Question:** ${dq.text}\n`;
-    out += '\n';
+    const dqCell = dq?.text
+      ? `**${escapePipeChars(dq.text)}** (${loop.durationDays} days)`
+      : `Loop ${i + 1} (${loop.durationDays} days)`;
 
     if (loop.targets.length === 0) {
-      out += '_No learning targets in this loop._\n\n';
+      out += `| ${dqCell} | | | | |\n`;
       continue;
     }
 
-    out += header + '\n';
-    out += divider + '\n';
-
-    for (const target of loop.targets) {
+    for (let ti = 0; ti < loop.targets.length; ti++) {
+      const target = loop.targets[ti];
       const st = target.summaryTable;
+
+      // Link to first google-doc resource across all activities; fall back to any resource
+      const allResources = target.activities.flatMap((a) => a.resources);
+      const primaryResource =
+        allResources.find((r) => r.type === 'google-doc') ?? allResources[0] ?? null;
+      const activityText = escapePipeChars(st.activity || '');
+      const activityCell =
+        primaryResource?.url ? `[${activityText}](${primaryResource.url})` : activityText;
+
       const cells = [
-        escapePipeChars(st.activity || ''),
+        ti === 0 ? dqCell : '', // DQ only on first row of each loop
+        activityCell,
         escapePipeChars(st.observations || ''),
         escapePipeChars(st.reasoning || ''),
         escapePipeChars(st.connectionToPhenomenon || ''),
       ];
       out += `| ${cells.join(' | ')} |\n`;
     }
-
-    out += '\n';
   }
 
-  return out;
+  return out + '\n';
 }
 
 export function buildMarkdownV2(unit: Unit): string {
@@ -198,6 +205,9 @@ export function buildMarkdownV2(unit: Unit): string {
 
   if (unit.phenomenonSlidesUrl) out += field('Phenomenon Slides', unit.phenomenonSlidesUrl);
 
+  // Quick Reference planning table — immediately after overview for at-a-glance scanning
+  out += buildPlanningTable(unit);
+
   // §2. Predicted Driving Questions
   out += section('## §2. Predicted Driving Questions');
   out += '\n';
@@ -224,9 +234,6 @@ export function buildMarkdownV2(unit: Unit): string {
   for (let i = 0; i < unit.loops.length; i++) {
     out += buildLoop(unit.loops[i], i + 1, unit.drivingQuestions);
   }
-
-  // AST Planning Table
-  out += buildPlanningTable(unit);
 
   // Putting It Together (Transfer Task)
   const tt = unit.transferTask;

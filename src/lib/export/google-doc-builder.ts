@@ -8,7 +8,7 @@ type Request = Record<string, any>;
 export const PLANNING_TABLE_PLACEHOLDER = '%%PLANNING_TABLE%%';
 
 export const PLANNING_TABLE_COLUMNS = [
-  '#',
+  'Driving Question',
   'Activity / Big Idea',
   'What we learned',
   'How it helps my understanding of my topic',
@@ -16,40 +16,68 @@ export const PLANNING_TABLE_COLUMNS = [
 ] as const;
 
 export interface PlanningTableData {
-  /** All rows including the header row and loop-header rows. */
+  /** All rows including the header row. One data row per learning target. */
   rows: string[][];
-  /** Zero-based indices of rows that should be bold (header + loop headers). */
+  /** Zero-based indices of the header row (always [0]). Used for bold styling. */
   headerRowIndices: number[];
+  /**
+   * Groups of rows (0-based, 1-indexed to skip the header) where the DQ column
+   * should be merged vertically — one entry per loop that has > 1 target.
+   */
+  dqMergeGroups: Array<{ startRow: number; rowCount: number }>;
+  /**
+   * Rows (0-based, 1-indexed to skip the header) where the Activity column
+   * contains a hyperlink. The url is used to style the cell as a clickable link.
+   */
+  activityLinks: Array<{ rowIndex: number; url: string }>;
 }
 
-/** Builds the planning table row data from the unit. */
+/** Builds the consolidated quick-reference planning table data from the unit. */
 export function buildPlanningTableData(unit: Unit): PlanningTableData {
   const rows: string[][] = [Array.from(PLANNING_TABLE_COLUMNS)];
   const headerRowIndices: number[] = [0];
+  const dqMergeGroups: Array<{ startRow: number; rowCount: number }> = [];
+  const activityLinks: Array<{ rowIndex: number; url: string }> = [];
 
   for (let li = 0; li < unit.loops.length; li++) {
     const loop = unit.loops[li];
     if (loop.targets.length === 0) continue;
 
     const dq = loop.dqId ? unit.drivingQuestions.find((q) => q.id === loop.dqId) ?? null : null;
-    const loopLabel = `Loop ${li + 1}: ${loop.title || 'Untitled Loop'}${dq?.text ? `\nDriving Question: ${dq.text}` : ''}`;
-    headerRowIndices.push(rows.length);
-    rows.push([loopLabel, '', '', '', '']);
+    const dqLabel = dq?.text
+      ? `${dq.text}\n(${loop.durationDays} days)`
+      : `Loop ${li + 1} (${loop.durationDays} days)`;
+
+    const loopStartRow = rows.length; // index of first target row for this loop
 
     for (let ti = 0; ti < loop.targets.length; ti++) {
       const target = loop.targets[ti];
       const st = target.summaryTable;
+
+      // Activity / Big Idea cell — collect primary resource URL for hyperlinking
+      const allResources = target.activities.flatMap((a) => a.resources);
+      const primaryResource =
+        allResources.find((r) => r.type === 'google-doc') ?? allResources[0] ?? null;
+      if (primaryResource?.url) {
+        activityLinks.push({ rowIndex: rows.length, url: primaryResource.url });
+      }
+
       rows.push([
-        `${li + 1}.${ti + 1}  ${target.title || 'Untitled Target'}`,
+        ti === 0 ? dqLabel : '', // DQ text only in first target row; blank for subsequent rows
         st.activity || '',
         st.observations || '',
         st.reasoning || '',
         st.connectionToPhenomenon || '',
       ]);
     }
+
+    // Record a merge group if this loop has more than one target
+    if (loop.targets.length > 1) {
+      dqMergeGroups.push({ startRow: loopStartRow, rowCount: loop.targets.length });
+    }
   }
 
-  return { rows, headerRowIndices };
+  return { rows, headerRowIndices, dqMergeGroups, activityLinks };
 }
 
 /**
@@ -177,6 +205,12 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
   if (unit.gaplessExplanation) {
     labeled('Gapless Explanation (Teacher)', unit.gaplessExplanation);
     blank();
+  }
+
+  // Quick Reference Planning Table — placed immediately after overview for at-a-glance scanning
+  if (unit.loops.some((l) => l.targets.length > 0)) {
+    heading('Quick Reference: Planning Table', 2);
+    insertText(PLANNING_TABLE_PLACEHOLDER + '\n');
   }
 
   // Standards
@@ -316,12 +350,6 @@ export function buildGoogleDocRequests(unit: Unit): Request[] {
       blank();
     }
 
-  }
-
-  // AST Planning Table — placeholder replaced with a real table by the API route
-  if (unit.loops.some((l) => l.targets.length > 0)) {
-    heading('Planning Table (AST Framework)', 2);
-    insertText(PLANNING_TABLE_PLACEHOLDER + '\n');
   }
 
   // Transfer Task

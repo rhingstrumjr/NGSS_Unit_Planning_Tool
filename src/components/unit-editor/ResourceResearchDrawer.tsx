@@ -30,6 +30,12 @@ function inferResourceType(url: string): Resource['type'] {
   return 'article';
 }
 
+function searchSiteLabel(searchUrl: string): string {
+  if (searchUrl.includes('youtube.com')) return 'YouTube';
+  if (searchUrl.includes('phet.colorado.edu')) return 'PhET';
+  return 'Google';
+}
+
 function ModalityIcon({ modality }: { modality: ResearchedResource['modality'] }) {
   const icons: Record<ResearchedResource['modality'], string> = {
     'lab': '🧪',
@@ -61,9 +67,10 @@ function ReadingCard({
   onAdd: () => void;
   added: boolean;
 }) {
-  const broken = reading.urlVerified === false;
+  const isFallback = reading.isSearchFallback === true;
+  const siteName = searchSiteLabel(reading.searchUrl ?? '');
   return (
-    <div className={`bg-surface border rounded-lg p-3 space-y-1 ${broken ? 'border-amber/40' : 'border-border'}`}>
+    <div className={`bg-surface border rounded-lg p-3 space-y-1 ${isFallback ? 'border-amber/40' : 'border-border'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-base font-medium text-foreground truncate">{reading.title}</p>
@@ -80,23 +87,38 @@ function ReadingCard({
           href={reading.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`text-sm flex-shrink-0 ${broken ? 'text-amber hover:text-amber/80' : 'text-teal hover:text-teal-light'}`}
-          title={broken ? 'Link could not be verified' : 'Open link'}
+          className={`text-sm flex-shrink-0 ${isFallback ? 'text-amber hover:text-amber/80' : 'text-teal hover:text-teal-light'}`}
+          title={isFallback ? `Opens ${siteName} search` : 'Open link'}
         >
-          {broken ? '⚠' : '↗'}
+          {isFallback ? '🔍' : '↗'}
         </a>
       </div>
-      {broken && (
-        <p className="text-xs text-amber">Link could not be verified — may be broken</p>
+      {isFallback && (
+        <p className="text-xs text-amber">
+          Direct link unavailable — 🔍 opens {siteName} search for this title
+        </p>
       )}
       <p className="text-sm text-muted">{reading.description}</p>
-      <button
-        onClick={onAdd}
-        disabled={added}
-        className="text-sm text-teal hover:text-teal-light disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {added ? '✓ Added' : '+ Add to Loop Resources'}
-      </button>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          onClick={onAdd}
+          disabled={added}
+          className="text-sm text-teal hover:text-teal-light disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {added ? '✓ Added' : '+ Add to Loop Resources'}
+        </button>
+        {!isFallback && reading.searchUrl && (
+          <a
+            href={reading.searchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-muted hover:text-teal-light"
+            title={`Search ${siteName} for alternatives`}
+          >
+            🔍 Search {siteName}
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -115,10 +137,11 @@ function ResourceCard({
   addedResource: boolean;
 }) {
   const canAddActivity = resource.modality === 'lab' || resource.modality === 'teacher-demo';
-  const broken = resource.urlVerified === false;
+  const isFallback = resource.isSearchFallback === true;
+  const siteName = searchSiteLabel(resource.searchUrl ?? '');
 
   return (
-    <div className={`bg-surface border rounded-lg p-3 space-y-1 ${broken ? 'border-amber/40' : 'border-border'}`}>
+    <div className={`bg-surface border rounded-lg p-3 space-y-1 ${isFallback ? 'border-amber/40' : 'border-border'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-base font-medium text-foreground truncate">{resource.title}</p>
@@ -135,18 +158,20 @@ function ResourceCard({
           href={resource.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`text-sm flex-shrink-0 ${broken ? 'text-amber hover:text-amber/80' : 'text-teal hover:text-teal-light'}`}
-          title={broken ? 'Link could not be verified' : 'Open link'}
+          className={`text-sm flex-shrink-0 ${isFallback ? 'text-amber hover:text-amber/80' : 'text-teal hover:text-teal-light'}`}
+          title={isFallback ? `Opens ${siteName} search` : 'Open link'}
         >
-          {broken ? '⚠' : '↗'}
+          {isFallback ? '🔍' : '↗'}
         </a>
       </div>
-      {broken && (
-        <p className="text-xs text-amber">Link could not be verified — may be broken</p>
+      {isFallback && (
+        <p className="text-xs text-amber">
+          Direct link unavailable — 🔍 opens {siteName} search for this title
+        </p>
       )}
       <p className="text-sm text-muted">{resource.description}</p>
       <p className="text-sm text-foreground/60 italic">{resource.whyUseful}</p>
-      <div className="flex gap-3 pt-0.5">
+      <div className="flex gap-3 pt-0.5 flex-wrap">
         {canAddActivity && onAddAsActivity && (
           <button
             onClick={onAddAsActivity}
@@ -164,6 +189,17 @@ function ResourceCard({
           >
             {addedResource ? '✓ Added as Resource' : '+ Add as Resource'}
           </button>
+        )}
+        {!isFallback && resource.searchUrl && (
+          <a
+            href={resource.searchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-muted hover:text-teal-light"
+            title={`Search ${siteName} for alternatives`}
+          >
+            🔍 Search {siteName}
+          </a>
         )}
       </div>
     </div>

@@ -81,8 +81,6 @@ export async function POST(req: NextRequest) {
         const numCols = PLANNING_TABLE_COLUMNS.length;
 
         // Delete the placeholder paragraph and insert an empty table in its place.
-        // Note: insertTable prepends a newline, so the table's structural element
-        // lands at paraStart + 1. We capture paraStart for the GET below.
         await docs.documents.batchUpdate({
           documentId,
           requestBody: {
@@ -103,7 +101,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // ── Pass 3: fill cells ──
+        // ── Pass 3: fill cells + apply bold on header + apply hyperlinks ──
 
         const docWithTable = await docs.documents.get({ documentId });
         const updatedContent = docWithTable.data.body?.content ?? [];
@@ -117,10 +115,15 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        const tableStartIndex = tableEl?.startIndex ?? -1;
+
         if (tableEl) {
-          // Collect (index, text) pairs for every non-empty cell
+          // Collect (index, text) pairs for every non-empty cell, plus metadata for
+          // bold rows and hyperlinked activity cells.
           const inserts: { index: number; text: string }[] = [];
           const boldRanges: { startIndex: number; endIndex: number }[] = [];
+          // Activity column hyperlinks: rowIndex → { insertIndex, url }
+          const linkMap = new Map<number, { insertIndex: number; url: string }>();
 
           const tableRows = tableEl.table?.tableRows ?? [];
           for (let r = 0; r < tableRows.length; r++) {
@@ -128,13 +131,20 @@ export async function POST(req: NextRequest) {
             for (let c = 0; c < cells.length; c++) {
               const cellText = tableData.rows[r]?.[c] ?? '';
               if (!cellText) continue;
-              // Each empty cell has one paragraph element; insert at its startIndex
               const cellPara = cells[c].content?.[0];
               const insertIdx = cellPara?.startIndex;
               if (insertIdx == null) continue;
               inserts.push({ index: insertIdx, text: cellText });
+              // Bold the header row (row 0)
               if (tableData.headerRowIndices.includes(r)) {
                 boldRanges.push({ startIndex: insertIdx, endIndex: insertIdx + cellText.length });
+              }
+              // Record activity column (col 1) inserts for hyperlinking
+              if (c === 1) {
+                const link = tableData.activityLinks.find((l) => l.rowIndex === r);
+                if (link) {
+                  linkMap.set(r, { insertIndex: insertIdx, url: link.url });
+                }
               }
             }
           }
@@ -142,40 +152,89 @@ export async function POST(req: NextRequest) {
           if (inserts.length > 0) {
             // Insert in reverse order so earlier insertions don't shift later indices
             inserts.sort((a, b) => b.index - a.index);
-
             const fillRequests: DocRequest[] = inserts.map(({ index, text }) => ({
               insertText: { location: { index }, text },
             }));
 
-            // Bold requests go after all inserts. Because we inserted in reverse
-            // order the accumulated forward shift for each bold range equals the
-            // total length of text inserted AFTER that range — so we add that offset.
+            // Compute shifted indices for style requests. Because inserts were applied
+            // in reverse order, the forward shift for any original index equals the total
+            // length of all inserts that had a HIGHER original index.
             const sortedAsc = [...inserts].sort((a, b) => a.index - b.index);
-            const boldRequests: DocRequest[] = boldRanges.map(({ startIndex, endIndex }) => {
-              // Sum lengths of all inserts whose original index is > startIndex
-              const shift = sortedAsc
-                .filter((ins) => ins.index > startIndex)
+            const shiftFor = (origIdx: number) =>
+              sortedAsc
+                .filter((ins) => ins.index > origIdx)
                 .reduce((sum, ins) => sum + ins.text.length, 0);
+
+            // Bold header row
+            const boldRequests: DocRequest[] = boldRanges.map(({ startIndex, endIndex }) => {
+              const shift = shiftFor(startIndex);
               return {
                 updateTextStyle: {
-                  range: {
-                    startIndex: startIndex + shift,
-                    endIndex: endIndex + shift,
-                  },
+                  range: { startIndex: startIndex + shift, endIndex: endIndex + shift },
                   textStyle: { bold: true },
                   fields: 'bold',
                 },
               };
             });
 
+            // Hyperlink activity cells
+            const linkRequests: DocRequest[] = [];
+            for (const { insertIndex, url } of linkMap.values()) {
+              const text = inserts.find((ins) => ins.index === insertIndex)?.text ?? '';
+              if (!text) continue;
+              const shift = shiftFor(insertIndex);
+              linkRequests.push({
+                updateTextStyle: {
+                  range: {
+                    startIndex: insertIndex + shift,
+                    endIndex: insertIndex + shift + text.length,
+                  },
+                  textStyle: {
+                    link: { url },
+                    foregroundColor: {
+                      color: { rgbColor: { red: 0.067, green: 0.384, blue: 0.745 } },
+                    },
+                    underline: true,
+                  },
+                  fields: 'link,foregroundColor,underline',
+                },
+              });
+            }
+
             await docs.documents.batchUpdate({
               documentId,
-              requestBody: { requests: [...fillRequests, ...boldRequests] },
+              requestBody: { requests: [...fillRequests, ...boldRequests, ...linkRequests] },
             });
           }
         }
-      }
-    }
+
+        // ── Pass 4: merge DQ cells vertically within each loop ──
+        // Done AFTER filling so the merged cell retains the DQ text; consumed cells
+        // had empty content, so no text is lost.
+
+        if (tableStartIndex !== -1 && tableData.dqMergeGroups.length > 0) {
+          const mergeRequests: DocRequest[] = tableData.dqMergeGroups.map(
+            ({ startRow, rowCount }) => ({
+              mergeTableCells: {
+                tableRange: {
+                  tableCellLocation: {
+                    tableStartLocation: { index: tableStartIndex },
+                    rowIndex: startRow,
+                    columnIndex: 0,
+                  },
+                  rowSpan: rowCount,
+                  columnSpan: 1,
+                },
+              },
+            })
+          );
+          await docs.documents.batchUpdate({
+            documentId,
+            requestBody: { requests: mergeRequests },
+          });
+        }
+      }   // end if (paraStart !== -1)
+    }     // end if (hasTable)
 
     const docUrl = `https://docs.google.com/document/d/${documentId}/edit`;
     return NextResponse.json({ docUrl });
