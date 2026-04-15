@@ -3,6 +3,7 @@
 import type { Resource } from '@/lib/types';
 import { createBlankResource } from '@/lib/defaults';
 import { AddButton } from '@/components/ui/AddButton';
+import { DrivePickerButton } from './DrivePickerButton';
 
 interface ResourceListProps {
   resources: Resource[];
@@ -18,6 +19,10 @@ export function ResourceList({ resources, onChange, label = 'Resources', helpTex
 
   function add() {
     onChange([...resources, createBlankResource(resources.length)]);
+  }
+
+  function addFromPicker(resource: Resource) {
+    onChange([...resources, resource]);
   }
 
   function remove(id: string) {
@@ -61,8 +66,12 @@ export function ResourceList({ resources, onChange, label = 'Resources', helpTex
           </div>
         ))}
       </div>
-      <div className="mt-1">
+      <div className="mt-1 flex items-center gap-2 flex-wrap">
         <AddButton label="Add Resource" onClick={add} />
+        <DrivePickerButton
+          nextSortOrder={resources.length}
+          onPick={addFromPicker}
+        />
       </div>
     </div>
   );

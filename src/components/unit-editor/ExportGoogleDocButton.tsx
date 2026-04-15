@@ -1,30 +1,8 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import type { Unit } from '@/lib/types';
-
-const GOOGLE_CLIENT_ID = '956010149319-dudbpb2hinpo97tq30fgq5bt463de012.apps.googleusercontent.com';
-
-// GIS token client type (minimal)
-interface TokenClient {
-  requestAccessToken: (opts?: { prompt?: string }) => void;
-}
-
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        oauth2: {
-          initTokenClient: (config: {
-            client_id: string;
-            scope: string;
-            callback: (resp: { access_token?: string; error?: string }) => void;
-          }) => TokenClient;
-        };
-      };
-    };
-  }
-}
+import { requestDriveAccessToken } from '@/lib/google/gis';
 
 interface Props {
   unit: Unit;
@@ -33,63 +11,26 @@ interface Props {
 
 type State = 'idle' | 'loading' | 'error';
 
-const GIS_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-
-function loadGisScript(): Promise<void> {
-  if (window.google?.accounts?.oauth2) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${GIS_SCRIPT_URL}"]`);
-    if (existing) {
-      // Script tag exists but may still be loading
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', reject);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = GIS_SCRIPT_URL;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
 export function ExportGoogleDocButton({ unit, onDocCreated }: Props) {
   const [state, setState] = useState<State>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const tokenClientRef = useRef<TokenClient | null>(null);
 
   const hasDocUrl = !!unit.googleDocUrl;
 
   async function handleExport() {
-    const clientId = GOOGLE_CLIENT_ID;
     setState('loading');
     setErrorMsg('');
 
+    let accessToken: string;
     try {
-      await loadGisScript();
-    } catch {
+      accessToken = await requestDriveAccessToken();
+    } catch (err) {
       setState('error');
-      setErrorMsg('Failed to load Google Identity Services script.');
+      setErrorMsg(err instanceof Error ? err.message : 'Google sign-in failed.');
       return;
     }
 
-    // Init token client (re-init each time so we pick up unit data in the callback)
-    tokenClientRef.current = window.google!.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: DRIVE_SCOPE,
-      callback: async (tokenResponse) => {
-        if (tokenResponse.error || !tokenResponse.access_token) {
-          setState('error');
-          setErrorMsg(tokenResponse.error ?? 'Google sign-in was cancelled.');
-          return;
-        }
-        await createDoc(tokenResponse.access_token);
-      },
-    });
-
-    tokenClientRef.current.requestAccessToken();
+    await createDoc(accessToken);
   }
 
   async function createDoc(accessToken: string) {

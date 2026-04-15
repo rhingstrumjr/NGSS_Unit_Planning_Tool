@@ -5,6 +5,7 @@ import type { Activity, ActivityType, Resource } from '@/lib/types';
 import { createBlankActivity } from '@/lib/defaults';
 import { AddButton } from '@/components/ui/AddButton';
 import { AiSuggestButton } from '@/components/ui/AiSuggestButton';
+import { DrivePickerButton } from './DrivePickerButton';
 import {
   DndContext,
   closestCenter,
@@ -256,19 +257,29 @@ export function ActivityList({ activities, onChange, aiContext, unitId, loopId }
                   </div>
                 ))}
               </div>
-              <button
-                onClick={() =>
-                  update(act.id, {
-                    resources: [
-                      ...(act.resources ?? []),
-                      { id: uuid(), sortOrder: (act.resources ?? []).length, title: '', url: '', type: 'link' as Resource['type'] },
-                    ],
-                  })
-                }
-                className="mt-1 text-sm text-muted hover:text-teal flex items-center gap-1"
-              >
-                + Add file / link
-              </button>
+              <div className="mt-1 flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={() =>
+                    update(act.id, {
+                      resources: [
+                        ...(act.resources ?? []),
+                        { id: uuid(), sortOrder: (act.resources ?? []).length, title: '', url: '', type: 'link' as Resource['type'] },
+                      ],
+                    })
+                  }
+                  className="text-sm text-muted hover:text-teal flex items-center gap-1"
+                >
+                  + Add file / link
+                </button>
+                <DrivePickerButton
+                  nextSortOrder={(act.resources ?? []).length}
+                  onPick={(picked) =>
+                    update(act.id, {
+                      resources: [...(act.resources ?? []), picked],
+                    })
+                  }
+                />
+              </div>
             </div>
           </div>
           </SortableActivityItem>

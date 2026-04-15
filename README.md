@@ -18,6 +18,7 @@ A curriculum design tool for K–12 science teachers building phenomenon-driven 
 - **Model progression timeline** — visual horizontal stepper from Initial Model through each loop to Complete Model
 - **Resource research** — AI-powered teaching resource finder for loops and targets; resources labeled by tier (Teacher Reference / Student-Facing)
 - **Google Docs export** — one-click export to a formatted Google Doc (requires a Google account sign-in in the browser)
+- **Google Drive Picker** — "From Drive" button on every resource list lets you add Docs, Slides, Sheets, Forms, PDFs, and images directly from your Drive without copy-pasting share links (requires `NEXT_PUBLIC_GOOGLE_API_KEY` — see below)
 - **Markdown import/export** — share or version-control units as `.md` files
 - **JSON backup/restore** — export and import all units at once
 - **Teacher notes** — color-coded sticky notes pinned to any section
@@ -60,11 +61,14 @@ Create a `.env.local` file in the project root:
 
 ```env
 GEMINI_API_KEY=your_google_ai_studio_key_here
+# Optional — enables "From Drive" picker next to every Add Resource button
+NEXT_PUBLIC_GOOGLE_API_KEY=your_gcp_browser_api_key_here
 ```
 
 | Variable | Required | Description |
 |---|---|---|
 | `GEMINI_API_KEY` | Yes | Google AI Studio key. Used by all `/api/ai/*` and `/api/research/*` routes. |
+| `NEXT_PUBLIC_GOOGLE_API_KEY` | No | Browser API key from the same GCP project as the OAuth client ID. Required only if you want the in-app Google Drive Picker ("From Drive" button on resource lists). Enable the **Google Picker API** on that project. |
 
 ### Run the Development Server
 
