@@ -15,6 +15,8 @@
   - [STANDARD-CODE]: [Full standard statement]
 - **Phenomenon Slides:** [URL to Google Slides deck for the anchoring phenomenon launch]
 
+<!-- Quick Reference: Planning Table is auto-generated here when exported (one row per Learning Target, columns: Driving Question | Activity/Big Idea | What we learned | How it helps my understanding | What do I need to modify in my model). Do not add it manually. -->
+
 ## §2. Predicted Driving Questions
 
 <!-- These are the student-generated questions the unit is designed to answer. Typically 3–5. Order them roughly as they will be addressed by the sensemaking loops. -->
@@ -119,27 +121,6 @@
 - **Problematizing:** [Cliffhanger launching Loop 3]
 
 <!-- Continue adding Loop sections (§6, §7, …) until all driving questions are answered -->
-
-## AST Planning Table
-
-<!-- This table is auto-derived from the Summary Tables in each loop's Learning Targets. One table per loop. -->
-
-### Loop 1: [Loop Title]
-**Driving Question:** [Full text of the driving question this loop addresses]
-
-| Activity / Big Idea | What we learned | How it helps my understanding of my topic | What do I need to modify in my model |
-|---|---|---|---|
-| [Activity/Big Idea from LT 1.1] | [What we learned from LT 1.1] | [How it helps from LT 1.1] | [Model revision from LT 1.1] |
-| [Activity/Big Idea from LT 1.2] | [What we learned from LT 1.2] | [How it helps from LT 1.2] | [Model revision from LT 1.2] |
-
-### Loop 2: [Loop Title]
-**Driving Question:** [Full text of the driving question this loop addresses]
-
-| Activity / Big Idea | What we learned | How it helps my understanding of my topic | What do I need to modify in my model |
-|---|---|---|---|
-| [Activity/Big Idea from LT 2.1] | [What we learned from LT 2.1] | [How it helps from LT 2.1] | [Model revision from LT 2.1] |
-
-<!-- Add one table per loop, matching the loop sections above -->
 
 ## Putting It Together
 
