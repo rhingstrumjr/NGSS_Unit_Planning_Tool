@@ -6,6 +6,8 @@ import { createBlankActivity } from '@/lib/defaults';
 import { AddButton } from '@/components/ui/AddButton';
 import { AiSuggestButton } from '@/components/ui/AiSuggestButton';
 import { DrivePickerButton } from './DrivePickerButton';
+import { QuickAddResources } from '@/components/unit-editor/QuickAddResources';
+import { inferResourceTitle, inferResourceType } from '@/lib/url-metadata';
 import {
   DndContext,
   closestCenter,
@@ -257,20 +259,28 @@ export function ActivityList({ activities, onChange, aiContext, unitId, loopId }
                   </div>
                 ))}
               </div>
-              <div className="mt-1 flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={() =>
-                    update(act.id, {
-                      resources: [
-                        ...(act.resources ?? []),
-                        { id: uuid(), sortOrder: (act.resources ?? []).length, title: '', url: '', type: 'link' as Resource['type'] },
-                      ],
-                    })
-                  }
-                  className="text-sm text-muted hover:text-teal flex items-center gap-1"
-                >
-                  + Add file / link
-                </button>
+              <QuickAddResources
+                onAddUrls={(urls) => {
+                  const existing = act.resources ?? [];
+                  const created: Resource[] = urls.map((url, i) => ({
+                    id: uuid(),
+                    sortOrder: existing.length + i,
+                    title: inferResourceTitle(url),
+                    url,
+                    type: inferResourceType(url),
+                  }));
+                  update(act.id, { resources: [...existing, ...created] });
+                }}
+                onAddBlank={() =>
+                  update(act.id, {
+                    resources: [
+                      ...(act.resources ?? []),
+                      { id: uuid(), sortOrder: (act.resources ?? []).length, title: '', url: '', type: 'link' as Resource['type'] },
+                    ],
+                  })
+                }
+              />
+              <div className="mt-1">
                 <DrivePickerButton
                   nextSortOrder={(act.resources ?? []).length}
                   onPick={(picked) =>
